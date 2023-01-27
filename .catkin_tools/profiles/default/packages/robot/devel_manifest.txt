@@ -1,0 +1,5 @@
+robot
+/home/ubuntu/ws/devel/.private/robot/cmake.lock /home/ubuntu/ws/devel/./cmake.lock
+/home/ubuntu/ws/devel/.private/robot/lib/pkgconfig/robot.pc /home/ubuntu/ws/devel/lib/pkgconfig/robot.pc
+/home/ubuntu/ws/devel/.private/robot/share/robot/cmake/robotConfig.cmake /home/ubuntu/ws/devel/share/robot/cmake/robotConfig.cmake
+/home/ubuntu/ws/devel/.private/robot/share/robot/cmake/robotConfig-version.cmake /home/ubuntu/ws/devel/share/robot/cmake/robotConfig-version.cmake

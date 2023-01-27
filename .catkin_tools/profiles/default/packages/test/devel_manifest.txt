@@ -1,0 +1,5 @@
+test
+/home/ubuntu/ws/devel/.private/test/cmake.lock /home/ubuntu/ws/devel/./cmake.lock
+/home/ubuntu/ws/devel/.private/test/lib/pkgconfig/test.pc /home/ubuntu/ws/devel/lib/pkgconfig/test.pc
+/home/ubuntu/ws/devel/.private/test/share/test/cmake/testConfig.cmake /home/ubuntu/ws/devel/share/test/cmake/testConfig.cmake
+/home/ubuntu/ws/devel/.private/test/share/test/cmake/testConfig-version.cmake /home/ubuntu/ws/devel/share/test/cmake/testConfig-version.cmake
