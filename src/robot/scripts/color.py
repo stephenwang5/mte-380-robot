@@ -43,10 +43,13 @@ topics = {
 pubs = utils.create_pubs(topics)
 msgs = utils.create_msgs(topics)
 
-rate = rospy.Rate(2)
+rate = rospy.Rate(1)
 while not rospy.is_shutdown():
   rgb = msgs["/raw/color/rgb"]
-  rgb.r, rgb.g, rgb.b = sensor.color_rgb_bytes
+  lux = sensor.lux
+  rgb.a = lux if lux else 500
+  raw_rgb = sensor.color_rgb_bytes
+  rgb.r, rgb.g, rgb.b = list(map(lambda b : 500*b/rgb.a, raw_rgb))
 
   hsv = msgs["/raw/color/hsv"]
   hsv.hue, hsv.sat, hsv.val = rgb2hsv(rgb.r, rgb.g, rgb.b)
