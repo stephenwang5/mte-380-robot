@@ -1,0 +1,3 @@
+geometry_msgs/Vector3 lin_accel
+geometry_msgs/Vector3 ang_vel
+geometry_msgs/Vector3 mag_density
