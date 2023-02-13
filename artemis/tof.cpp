@@ -36,7 +36,3 @@ void ToF::read() {
     }
   }
 }
-
-VL53L5CX_ResultsData* ToF::get_data() {
-  return &data;
-}
