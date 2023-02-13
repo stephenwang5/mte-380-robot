@@ -1,20 +1,22 @@
-#include "motor.h"
+#include <Wire.h>
+#include "tof.h"
+
+ToF tof;
 
 void setup() {
-  // put your setup code here, to run once:
+
   Serial.begin(115200);
   while(!Serial);
-  Motor::begin();
+
+  Wire.begin();
+  Wire.setClock(400000); // 400 kHz
+
+  tof.begin();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  Motor::Left::forward(100);
-  delay(500);
-  Motor::Left::stop();
-  delay(500);
-  Motor::Left::backward(100);
-  delay(500);
-  Motor::Left::stop();
-  delay(500);
+  tof.read();
+  Serial.print(tof.get_data()->distance_mm[3]);
+  Serial.println();
+  delay(3);
 }
