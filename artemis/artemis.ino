@@ -1,5 +1,10 @@
 #include "motor.h"
 #include "encoder.h"
+#include <Wire.h>
+#include "tof.h"
+#include "imu.h"
+
+#define I2C_FREQ 400000
 
 const int robotWidth = 4; // robot width in inches
 const int wheelRadius = 3; // wheel radius in inches
@@ -20,14 +25,24 @@ static void LencoderUpdateISR() {
 
 /********** ISRs **********/
 
+TwoWire i2c(D25, D27);
+ToF tof;
+IMU imu;
+
 void setup() {
-  // put your setup code here, to run once:
+
   Serial.begin(115200);
   while(!Serial);
   pinMode(34, INPUT); // set broken motor pin to input so it doesnt interfere with pwm at now at pin 6
 
   attachInterrupt(digitalPinToInterrupt(L_Motor.encoder.pinA), RencoderUpdateISR, CHANGE);
   attachInterrupt(digitalPinToInterrupt(R_Motor.encoder.pinA), LencoderUpdateISR, CHANGE);
+
+  i2c.begin();
+  i2c.setClock(I2C_FREQ);
+
+  tof.begin();
+  imu.begin(i2c, I2C_FREQ);
 
 }
 
@@ -87,17 +102,21 @@ void TurnInPlace(int numDegrees) {
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  TurnInPlace(-90);
-  delay(2000);
-  forward(100);
-  delay(2000);
-  coast();
-  delay(2000);
-  TurnInPlace(90);
-  delay(2000);
-  backward(100);
-  delay(2000);
-  coast();
-  delay(4000);
+  tof.read();
+  Serial.print(tof.data.distance_mm[3]);
+  Serial.println();
+  delay(3);
+  // // put your main code here, to run repeatedly:
+  // TurnInPlace(-90);
+  // delay(2000);
+  // forward(100);
+  // delay(2000);
+  // coast();
+  // delay(2000);
+  // TurnInPlace(90);
+  // delay(2000);
+  // backward(100);
+  // delay(2000);
+  // coast();
+  // delay(4000);
 }
