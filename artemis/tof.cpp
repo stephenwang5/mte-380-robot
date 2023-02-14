@@ -29,7 +29,7 @@ void ToF::read() {
       Serial.print(" ms ");
       start_time = millis();
       Serial.println(" new data available");
-#endif DEBUG
+#endif
 
     } else {
       Serial.println("yikes tof fetch failed");
