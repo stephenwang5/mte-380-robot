@@ -1,30 +1,33 @@
 #ifndef MOTOR_H
 #define MOTOR_H
+#include "encoder.h"
 
-namespace Motor {
-  void begin();
+class Motor{
+  public:
+    Motor(int a, int b, Encoder enc): PinA(a), PinB(b), encoder(enc) {
+      pinMode(PinA, OUTPUT);
+      pinMode(PinB, OUTPUT);
+      // pidController = PID(&(encoder.encoderSpeed), &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
+      // pidController.SetMode(AUTOMATIC);
+      // pidController.SetSampleTime(100);
+    }
 
-  namespace Left {
-    const PinName enc = D24;
-    const PinName f = D35;
-    const PinName b = D34;
+    Encoder encoder;
+    const int PinA;
+    const int PinB;
+    int direction;
+    //PID pidController;
 
-    void forward(uint8_t);
-    void stop();
-    void backward(uint8_t);
-    void isr();
-  }
+    double Setpoint, Input, Output;
+    double lastEncoderCount = 0;
+    double Kp=1, Ki=0.1, Kd=0.01;
 
-  namespace Right {
-    const PinName enc = D5;
-    const PinName f = D29;
-    const PinName b = D11;
+    void clockwise(uint8_t);
+    void coast();
+    void counterclockwise(uint8_t);
+    //void controlSpeed();
 
-    void forward(uint8_t);
-    void stop();
-    void backward(uint8_t);
-    void isr();
-  }
-}
+    void setSetpoint(uint8_t setpoint);
+};
 
 #endif // MOTOR_H
