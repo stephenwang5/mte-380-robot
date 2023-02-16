@@ -5,8 +5,7 @@
 class Motor{
   public:
     Motor(int a, int b, Encoder enc): PinA(a), PinB(b), encoder(enc) {
-      pinMode(PinA, OUTPUT);
-      pinMode(PinB, OUTPUT);
+      
       // pidController = PID(&(encoder.encoderSpeed), &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
       // pidController.SetMode(AUTOMATIC);
       // pidController.SetSampleTime(100);
@@ -22,6 +21,7 @@ class Motor{
     double lastEncoderCount = 0;
     double Kp=1, Ki=0.1, Kd=0.01;
 
+    void begin();
     void clockwise(uint8_t);
     void coast();
     void counterclockwise(uint8_t);

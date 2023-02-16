@@ -1,5 +1,10 @@
 #include "motor.h"
 
+void Motor::begin() {
+  pinMode(PinA, OUTPUT);
+  pinMode(PinB, OUTPUT);
+}
+
 void Motor::clockwise(uint8_t pwm) {
   analogWrite(PinA, pwm);
   analogWrite(PinB, 0);
