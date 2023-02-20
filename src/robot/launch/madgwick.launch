@@ -1,6 +1,0 @@
-<launch>
-  <rosparam command="load" file="$(find robot)/params/imu.yaml" />
-  <node pkg="robot" type="imu_mpu.py" name="imu_driver" />
-
-  <node pkg="imu_filter_madgwick" type="imu_filter_node" name="madgwick" />
-</launch>
