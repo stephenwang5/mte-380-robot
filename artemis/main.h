@@ -12,8 +12,8 @@
 constexpr uint32_t I2C_FREQ = 400000;
 constexpr uint16_t TICKS_PER_REV = 2100;
 
-constexpr int robotWidth = 4;
-constexpr int wheelRadius = 3;
+constexpr float robotWidth = 4.5;
+constexpr float wheelRadius = 3.25;
 
 extern Motor leftMotor;
 extern Motor rightMotor;
