@@ -36,3 +36,37 @@ void ToF::read() {
     }
   }
 }
+
+void ToF::filter() {
+  constexpr float kernel[8][5] = {
+    {0, 0, 0, 0, 0}, // row 0
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+    {0, 0, 0, 0, 0},
+  };
+
+  float dotProduct[4] = {0};
+  for (int stride = 0; stride < 4; stride++) {
+    for (int row = 0; row < 8; row++) {
+      for (int col = 0; col < 5; col++) {
+        dotProduct[stride] += kernel[row][col+stride] * data.distance_mm[row*8 + col];
+      }
+    }
+  }
+
+  int bestMatchIdx;
+  float bestMatch = max(dotProduct[0], dotProduct[1]);
+  for (int i = 1; i < 4; i++) {
+    float tempMax = max(dotProduct[i], dotProduct[i+1]);
+    if (tempMax > bestMatch) {
+      bestMatchIdx = i;
+      bestMatch = tempMax;
+    }
+  }
+  filterResult = bestMatchIdx;
+
+}
