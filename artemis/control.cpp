@@ -2,8 +2,6 @@
 
 #include "main.h"
 
-using namespace std::chrono_literals;
-
 void turnInPlace(int degrees) {
 
   bool clockwise = degrees > 0;
@@ -36,6 +34,39 @@ void turnInPlace(int degrees) {
     }
   }
 
+}
+
+void turnToMagPos(int magX, int magY){
+
+  read_imu(imu);
+  int currentMagX = imu.mx;
+  int currentMagY = imu.my;
+  int pwm = 50;
+  R_Motor.clockwise(pwm);
+  L_Motor.clockwise(pwm);
+  while((currentMagX > 1.05*magX || currentMagX < 0.95*magX) && (currentMagY > 1.05*magY || currentMagY < 0.95*magY)){
+    read_imu(imu);
+    currentMagX = imu.mx;
+    currentMagY = imu.my;
+  }
+
+  coast();
+}
+
+void turnToYawPos(int yaw) {
+  read_imu(imu);
+
+  int currentYaw = imu.yaw;
+  int pwm = 50;
+  R_Motor.clockwise(pwm);
+  L_Motor.clockwise(pwm);
+
+  while((currentYaw > 1.05*yaw || currentYaw < 0.95*yaw)){
+    read_imu(imu);
+    currentYaw = imu.yaw;
+  }
+
+  coast();
 }
 
 void rampUpBothMotors() {

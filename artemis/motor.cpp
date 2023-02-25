@@ -2,8 +2,6 @@
 
 #include "main.h"
 
-using namespace std::chrono_literals;
-
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc) {}
 
 void Motor::begin() {
