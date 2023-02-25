@@ -10,7 +10,7 @@ class Motor{
 public:
 
   int64_t encoder;
-  constexpr uint8_t encBufLength = 4;
+  static constexpr uint8_t encBufLength = 4;
   int64_t encBuf[encBufLength];
   int64_t encBufTime[encBufLength];
   uint8_t encBufIdx;
@@ -47,5 +47,6 @@ void forward(uint8_t);
 void backward(uint8_t);
 void coast();
 void activeBreak();
+void calculateMotorSpeeds();
 
 #endif // MOTOR_H

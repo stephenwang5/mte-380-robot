@@ -18,15 +18,13 @@ enum ThrowBotState {
 } throwbotState; // define states and initialize the state variable
 
 rtos::Thread motorSpeedTask;
-void calculateMotorSpeeds();
 rtos::Thread motorControlTask;
-void controlMotor();
-rtos::Timer tofInputTask;
-rtos::Timer imuInputTask;
+rtos::Thread tofInputTask;
+rtos::Thread imuInputTask;
 // correct path drift due to wheel slip using odometry estimation
 rtos::Thread pathPlanningTask;
-void courseAdjustment();
-void motorDemo();
+rtos::Thread debugPrinter;
+void printDebugMsgs();
 
 void setup() {
 
@@ -50,7 +48,8 @@ void setup() {
   throwbotState = IDLE;
 
   motorSpeedTask.start(calculateMotorSpeeds);
-  motorControlTask.start(controlMotor);
+  motorControlTask.start(rampUpBothMotors);
+  debugPrinter.start(printDebugMsgs);
 
   Serial.println("left,right");
 
@@ -58,46 +57,16 @@ void setup() {
 
 void loop() {
 
-  Serial.print(leftMotor.encoder);
-  Serial.print(",");
-  Serial.println(rightMotor.encoder);
-  delay(100);
+  delay(1000);
 
 }
 
-void calculateMotorSpeeds() {
+void printDebugMsgs() {
   while (1) {
-    leftMotor.calculateSpeed();
-    rightMotor.calculateSpeed();
-    rtos::ThisThread::sleep_for(1ms);
+    Serial.print(leftMotor.speed);
+    Serial.print(",");
+    Serial.print(rightMotor.speed);
+    Serial.println();
+    rtos::ThisThread::sleep_for(50ms);
   }
-}
-
-void controlMotor() {
-  static uint8_t pwm = 0;
-  while (1) {
-    if (!pwm) {
-      leftMotor.encoder = 0;
-      rightMotor.encoder = 0;
-    }
-    leftMotor.rotateCCW(pwm >> 2);
-    rightMotor.rotateCW(pwm++ >> 2);
-    rtos::ThisThread::sleep_for(10ms);
-  }
-  
-}
-
-void motorDemo() {
-  turnInPlace(-90);
-  delay(2000);
-  forward(100);
-  delay(2000);
-  coast();
-  delay(2000);
-  turnInPlace(90);
-  delay(2000);
-  backward(100);
-  delay(2000);
-  coast();
-  delay(4000);
 }

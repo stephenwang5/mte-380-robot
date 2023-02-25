@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+using namespace std::chrono_literals;
+
 void turnInPlace(int degrees) {
 
   bool clockwise = degrees > 0;
@@ -34,4 +36,28 @@ void turnInPlace(int degrees) {
     }
   }
 
+}
+
+void rampUpBothMotors() {
+  static uint8_t pwm = 0;
+  while (1) {
+    leftMotor.rotateCCW(pwm >> 2);
+    rightMotor.rotateCW(pwm++ >> 2);
+    rtos::ThisThread::sleep_for(10ms);
+  }
+}
+
+void motorDemo() {
+  turnInPlace(-90);
+  delay(2000);
+  forward(100);
+  delay(2000);
+  coast();
+  delay(2000);
+  turnInPlace(90);
+  delay(2000);
+  backward(100);
+  delay(2000);
+  coast();
+  delay(4000);
 }

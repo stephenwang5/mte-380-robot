@@ -2,6 +2,8 @@
 
 #include "main.h"
 
+using namespace std::chrono_literals;
+
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc) {}
 
 void Motor::begin() {
@@ -54,20 +56,26 @@ void Motor::encoderUpdate() {
 void Motor::calculateSpeed() { // uses rolling average filter
 
   int32_t curTime = micros();
-  prevEncoder[encBufIdx] = encoder;
-  prevTime[encBufIdx] = curTime;
+  encBuf[encBufIdx] = encoder;
+  encBufTime[encBufIdx] = curTime;
   encBufIdx = (encBufIdx + 1) % encBufLength;
 
-  if (!encBufInitialized && encBufIdx == (encBufLength-1))
-    encBufInitialized = true;
-  else
-    return;
+  if (!encBufInitialized) {
+    if (encBufIdx == (encBufLength-1)) {
+      encBufInitialized = true;
+      encBuf[encBufIdx] = encoder;
+      encBufTime[encBufIdx] = curTime + 1;
+      encBufIdx = (encBufIdx + 1) % encBufLength;
+    } else {
+      return;
+    }
+  }
 
   float sum = 0;
   for (int i = 0; i < encBufLength-1; i++) {
     int a = (i+encBufIdx) % encBufLength;
     int b = (a+1) % encBufLength;
-    sum += 1e-6f * (encBuf[b] - encBuf[a]) / (encBufTime[b] - encBufTime[a]);
+    sum += 1e6f * (encBuf[b] - encBuf[a]) / (encBufTime[b] - encBufTime[a]);
   }
 
   speed = sum / (encBufLength-1) / TICKS_PER_REV; // rps
@@ -105,4 +113,12 @@ void coast(){
 void activeBreak() {
   leftMotor.activeBreak();
   rightMotor.activeBreak();
+}
+
+void calculateMotorSpeeds() {
+  while (1) {
+    leftMotor.calculateSpeed();
+    rightMotor.calculateSpeed();
+    rtos::ThisThread::sleep_for(2ms);
+  }
 }
