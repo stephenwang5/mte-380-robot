@@ -12,11 +12,11 @@ public:
   int64_t encoder;
   int64_t prevEncoder;
   int32_t prevTime;
-  PinName encoderPin;
   float speed;
 
   const PinName pinA;
   const PinName pinB;
+  const PinName encoderPin;
   Direction direction;
 
   // TODO: if the PID gain terms aren't dynamic, make them constexpr
@@ -39,6 +39,7 @@ public:
   void calculateSpeed();
 };
 
+void registerEncoderISRs();
 void forward(uint8_t);
 void backward(uint8_t);
 void coast();

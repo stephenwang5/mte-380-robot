@@ -1,4 +1,5 @@
 #include "motor.h"
+
 #include "main.h"
 
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc) {}
@@ -6,6 +7,7 @@ Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(en
 void Motor::begin() {
   pinMode(pinA, OUTPUT);
   pinMode(pinB, OUTPUT);
+  pinMode(encoderPin, INPUT);
 }
 
 void Motor::rotateCW(uint8_t pwm) {
