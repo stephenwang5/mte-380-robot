@@ -51,13 +51,27 @@ void Motor::encoderUpdate() {
   encoder += direction;
 }
 
-void Motor::calculateSpeed() {
-  int32_t curTime = micros();
-  float duration = (curTime - prevTime) * 1e-6f;
-  speed = (float)(encoder - prevEncoder) / TICKS_PER_REV / duration;
+void Motor::calculateSpeed() { // uses rolling average filter
 
-  prevTime = curTime;
-  prevEncoder = encoder;
+  int32_t curTime = micros();
+  prevEncoder[encBufIdx] = encoder;
+  prevTime[encBufIdx] = curTime;
+  encBufIdx = (encBufIdx + 1) % encBufLength;
+
+  if (!encBufInitialized && encBufIdx == (encBufLength-1))
+    encBufInitialized = true;
+  else
+    return;
+
+  float sum = 0;
+  for (int i = 0; i < encBufLength-1; i++) {
+    int a = (i+encBufIdx) % encBufLength;
+    int b = (a+1) % encBufLength;
+    sum += 1e-6f * (encBuf[b] - encBuf[a]) / (encBufTime[b] - encBufTime[a]);
+  }
+
+  speed = sum / (encBufLength-1) / TICKS_PER_REV; // rps
+
 }
 
 static void updateRightEncoder() {

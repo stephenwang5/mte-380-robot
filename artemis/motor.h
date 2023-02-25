@@ -10,8 +10,11 @@ class Motor{
 public:
 
   int64_t encoder;
-  int64_t prevEncoder;
-  int32_t prevTime;
+  constexpr uint8_t encBufLength = 4;
+  int64_t encBuf[encBufLength];
+  int64_t encBufTime[encBufLength];
+  uint8_t encBufIdx;
+  bool encBufInitialized;
   float speed;
 
   const PinName pinA;
