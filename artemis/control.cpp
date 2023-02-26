@@ -36,16 +36,17 @@ void turnInPlace(int degrees) {
 
 }
 
+// FIXME: only exists for unit testing. Not thread friendly
 void turnToMagPos(int magX, int magY){
 
-  read_imu(imu);
+  readIMU();
   int currentMagX = imu.mx;
   int currentMagY = imu.my;
   int pwm = 50;
-  R_Motor.clockwise(pwm);
-  L_Motor.clockwise(pwm);
+  rightMotor.rotateCW(pwm);
+  leftMotor.rotateCW(pwm);
   while((currentMagX > 1.05*magX || currentMagX < 0.95*magX) && (currentMagY > 1.05*magY || currentMagY < 0.95*magY)){
-    read_imu(imu);
+    readIMU();
     currentMagX = imu.mx;
     currentMagY = imu.my;
   }
@@ -53,16 +54,17 @@ void turnToMagPos(int magX, int magY){
   coast();
 }
 
+// FIXME: only exists for unit testing. Not thread friendly
 void turnToYawPos(int yaw) {
-  read_imu(imu);
 
+  readIMU();
   int currentYaw = imu.yaw;
   int pwm = 50;
-  R_Motor.clockwise(pwm);
-  L_Motor.clockwise(pwm);
+  rightMotor.rotateCW(pwm);
+  leftMotor.rotateCW(pwm);
 
   while((currentYaw > 1.05*yaw || currentYaw < 0.95*yaw)){
-    read_imu(imu);
+    readIMU();
     currentYaw = imu.yaw;
   }
 

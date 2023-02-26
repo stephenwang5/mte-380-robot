@@ -7,8 +7,9 @@ Motor leftMotor = Motor(D35, D6, D14);
 Motor rightMotor = Motor(D29, D11, D23);
 
 TwoWire i2c(D25, D27);
-// ToF tof;
-// MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
+SparkFun_VL53L5CX tof;
+VL53L5CX_ResultsData tofData;
+MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 
 enum ThrowBotState {
   IDLE,
@@ -20,11 +21,22 @@ enum ThrowBotState {
 rtos::Thread motorSpeedTask;
 rtos::Thread motorControlTask;
 rtos::Thread tofInputTask;
-rtos::Thread imuInputTask;
+rtos::Thread imuInputTask(osPriorityNormal, OS_STACK_SIZE, nullptr, "imu");
 // correct path drift due to wheel slip using odometry estimation
 rtos::Thread pathPlanningTask;
 rtos::Thread debugPrinter;
 void printDebugMsgs();
+
+template<typename T>
+void printBuf(const T* const buf, uint8_t col, uint8_t row=0) {
+  for (int j = 0; j < row; j++) {
+    for (int i = 0; i < col; i++) {
+      Serial.print(buf[i + j*col]);
+      Serial.print(", ");
+    }
+    Serial.println();
+  }
+}
 
 void setup() {
 
@@ -38,8 +50,8 @@ void setup() {
   i2c.begin();
   i2c.setClock(I2C_FREQ);
 
-  // tof.begin();
-  // initIMU();
+  initToF();
+  initIMU();
 
   leftMotor.begin();
   rightMotor.begin();
@@ -48,10 +60,10 @@ void setup() {
   throwbotState = IDLE;
 
   motorSpeedTask.start(calculateMotorSpeeds);
+  tofInputTask.start(readToF);
+  imuInputTask.start(imuReadLoop);
   motorControlTask.start(rampUpBothMotors);
   debugPrinter.start(printDebugMsgs);
-
-  Serial.println("left,right");
 
 }
 
@@ -63,10 +75,21 @@ void loop() {
 
 void printDebugMsgs() {
   while (1) {
-    Serial.print(leftMotor.speed);
+    // Serial.print(leftMotor.speed);
+    // Serial.print(",");
+    // Serial.print(rightMotor.speed);
+    // Serial.println();
+
+    // printBuf<int16_t>(tofData.distance_mm, 8, 8);
+    // Serial.println("\n\n\n");
+
+    Serial.print(imu.yaw);
     Serial.print(",");
-    Serial.print(rightMotor.speed);
+    Serial.print(imu.pitch);
+    Serial.print(",");
+    Serial.print(imu.roll);
     Serial.println();
-    rtos::ThisThread::sleep_for(50ms);
+
+    rtos::ThisThread::sleep_for(500ms);
   }
 }

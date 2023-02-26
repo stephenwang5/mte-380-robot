@@ -3,5 +3,6 @@
 
 void initIMU();
 void readIMU();
+void imuReadLoop();
 
 #endif // IMU_H

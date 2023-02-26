@@ -54,3 +54,10 @@ void readIMU() {
   // - http://www.ngdc.noaa.gov/geomag-web/#declination
   imu.yaw  -= 8.5;
 }
+
+void imuReadLoop() {
+  while (1) {
+    readIMU();
+    rtos::ThisThread::sleep_for(50ms);
+  }
+}
