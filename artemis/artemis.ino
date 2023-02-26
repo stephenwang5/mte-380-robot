@@ -1,10 +1,8 @@
 #include "main.h"
 
-using namespace std::chrono_literals;
-
 //bridged pin 6 to pin 34 on board because pin 34 wouldnt output a PWM
-Motor leftMotor = Motor(D35, D6, D14);
-Motor rightMotor = Motor(D29, D11, D23);
+Motor leftMotor(D35, D6, D14);
+Motor rightMotor(D29, D11, D23);
 
 TwoWire i2c(D25, D27);
 rtos::Mutex i2cLock("I2C Lock");
@@ -71,6 +69,7 @@ void setup() {
 
 void loop() {
 
+  // state transition logic here
   delay(1000);
 
 }
