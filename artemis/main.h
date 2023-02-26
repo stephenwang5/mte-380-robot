@@ -3,6 +3,7 @@
 
 #include <Wire.h>
 #include <MPU9250.h>
+#include <SparkFun_VL53L5CX_Library.h>
 #include "control.h"
 #include "motor.h"
 #include "tof.h"
@@ -22,7 +23,8 @@ constexpr float wheelRadius = 3.25;
 extern Motor leftMotor;
 extern Motor rightMotor;
 extern TwoWire i2c;
-extern ToF tof;
+extern SparkFun_VL53L5CX tof;
+extern VL53L5CX_ResultsData tofData;
 extern MPU9250 imu;
 
 #endif // MAIN_H

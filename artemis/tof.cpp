@@ -1,9 +1,9 @@
 #include "tof.h"
 
-ToF::ToF() : sensor(), data() {}
+#include "main.h"
 
-void ToF::begin() {
-  if (!sensor.begin()) {
+void initToF() {
+  if (!tof.begin(0x52 >> 1, i2c)) {
     Serial.println("tough luck. tof not found");
     while (1);
   }
@@ -12,32 +12,27 @@ void ToF::begin() {
   Serial.println("upload complete!");
 #endif
 
-  sensor.setResolution(64);
+  tof.setResolution(64);
 
-  sensor.setRangingMode(SF_VL53L5CX_RANGING_MODE::CONTINUOUS);
-  sensor.setRangingFrequency(15);
+  tof.setRangingMode(SF_VL53L5CX_RANGING_MODE::CONTINUOUS);
+  tof.setRangingFrequency(15);
 
-  sensor.startRanging();
+  tof.startRanging();
 }
 
-void ToF::read() {
-  if (sensor.isDataReady()) {
-    if (sensor.getRangingData(&data)) {
-
-#ifdef DEBUG
-      Serial.print(millis() - start_time);
-      Serial.print(" ms ");
-      start_time = millis();
-      Serial.println(" new data available");
-#endif
-
-    } else {
-      Serial.println("yikes tof fetch failed");
+void readToF() {
+  while (1) {
+    if (tof.isDataReady()) {
+      if (tof.getRangingData(&tofData)) {
+      } else {
+        Serial.println("yikes tof fetch failed");
+      }
     }
+    rtos::ThisThread::sleep_for(100ms);
   }
 }
 
-void ToF::filter() {
+int extractToF() {
   constexpr float kernel[8][5] = {
     {0, 0, 0, 0, 0}, // row 0
     {0, 0, 0, 0, 0},
@@ -53,20 +48,19 @@ void ToF::filter() {
   for (int stride = 0; stride < 4; stride++) {
     for (int row = 0; row < 8; row++) {
       for (int col = 0; col < 5; col++) {
-        dotProduct[stride] += kernel[row][col+stride] * data.distance_mm[row*8 + col];
+        dotProduct[stride] += kernel[row][col+stride] * tofData.distance_mm[row*8 + col];
       }
     }
   }
 
   int bestMatchIdx;
   float bestMatch = max(dotProduct[0], dotProduct[1]);
-  for (int i = 1; i < 4; i++) {
-    float tempMax = max(dotProduct[i], dotProduct[i+1]);
-    if (tempMax > bestMatch) {
+  for (int i = 2; i < 4; i++) {
+    if (dotProduct[i] > bestMatch) {
       bestMatchIdx = i;
-      bestMatch = tempMax;
+      bestMatch = dotProduct[i];
     }
   }
-  filterResult = bestMatchIdx;
 
+  return bestMatchIdx;
 }
