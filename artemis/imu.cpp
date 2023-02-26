@@ -15,17 +15,20 @@ void initIMU() {
 }
 
 void readIMU() {
+  i2cLock.lock();
   imu.readAccelData(imu.accelCount);
+  imu.readGyroData(imu.gyroCount);  // Read the x/y/z adc code
+  imu.readMagData(imu.magCount);
+  i2cLock.unlock();
+
   imu.ax = (float)imu.accelCount[0] * imu.aRes; // - imu.accelBias[0];
   imu.ay = (float)imu.accelCount[1] * imu.aRes; // - imu.accelBias[1];
   imu.az = (float)imu.accelCount[2] * imu.aRes; // - imu.accelBias[2];
 
-  imu.readGyroData(imu.gyroCount);  // Read the x/y/z adc code
   imu.gx = (float)imu.gyroCount[0] * imu.gRes;
   imu.gy = (float)imu.gyroCount[1] * imu.gRes;
   imu.gz = (float)imu.gyroCount[2] * imu.gRes;
 
-  imu.readMagData(imu.magCount);
   imu.mx = (float)imu.magCount[0] * imu.factoryMagCalibration[0] - imu.magBias[0];
   imu.my = (float)imu.magCount[1] * imu.factoryMagCalibration[1] - imu.magBias[1];
   imu.mz = (float)imu.magCount[2] * imu.factoryMagCalibration[2] - imu.magBias[2];

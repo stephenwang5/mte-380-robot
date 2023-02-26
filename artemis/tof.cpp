@@ -22,12 +22,15 @@ void initToF() {
 
 void readToF() {
   while (1) {
+    i2cLock.lock();
     if (tof.isDataReady()) {
       if (tof.getRangingData(&tofData)) {
       } else {
         Serial.println("yikes tof fetch failed");
       }
     }
+    i2cLock.unlock();
+
     rtos::ThisThread::sleep_for(100ms);
   }
 }

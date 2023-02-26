@@ -7,6 +7,8 @@ Motor leftMotor = Motor(D35, D6, D14);
 Motor rightMotor = Motor(D29, D11, D23);
 
 TwoWire i2c(D25, D27);
+rtos::Mutex i2cLock("I2C Lock");
+
 SparkFun_VL53L5CX tof;
 VL53L5CX_ResultsData tofData;
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
