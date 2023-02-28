@@ -94,13 +94,23 @@ void registerEncoderISRs() {
 }
 
 void forward(uint8_t pwm){
-  leftMotor.rotateCCW(pwm);
-  rightMotor.rotateCW(pwm);
+  if (orientation == IMU_FACE_UP) {
+    leftMotor.rotateCCW(pwm);
+    rightMotor.rotateCW(pwm);
+  } else {
+    leftMotor.rotateCW(pwm);
+    rightMotor.rotateCCW(pwm);
+  }
 }
 
 void backward(uint8_t pwm){
-  leftMotor.rotateCW(pwm);
-  rightMotor.rotateCCW(pwm);
+  if (orientation == IMU_FACE_UP) {
+    leftMotor.rotateCW(pwm);
+    rightMotor.rotateCCW(pwm);
+  } else {
+    leftMotor.rotateCCW(pwm);
+    rightMotor.rotateCW(pwm);
+  }
 }
 
 void coast(){

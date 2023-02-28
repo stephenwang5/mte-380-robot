@@ -6,10 +6,12 @@
 #include <SparkFun_VL53L5CX_Library.h>
 #include "control.h"
 #include "motor.h"
+#include "test.h"
 #include "tof.h"
 #include "timer.h"
 #include "imu.h"
 
+// uncomment to print more verbose messages
 // #define DEBUG
 
 using namespace std::chrono_literals;

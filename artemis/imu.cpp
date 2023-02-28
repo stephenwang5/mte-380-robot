@@ -4,6 +4,8 @@
 #include <quaternionFilters.h>
 #include "main.h"
 
+Orientation orientation;
+
 void initIMU() {
   imu.initMPU9250();
   imu.initAK8963(imu.factoryMagCalibration);
@@ -63,4 +65,8 @@ void imuReadLoop() {
     readIMU();
     rtos::ThisThread::sleep_for(50ms);
   }
+}
+
+void findOrientation() {
+  orientation = IMU_FACE_UP;
 }
