@@ -48,6 +48,7 @@ void Motor::activeBreak() {
 // }
 
 void Motor::encoderUpdate() {
+  // CW increments and CCW decrements
   encoder += direction;
 }
 
