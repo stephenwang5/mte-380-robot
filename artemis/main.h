@@ -17,7 +17,7 @@
 using namespace std::chrono_literals;
 
 constexpr uint32_t I2C_FREQ = 400000;
-constexpr uint16_t TICKS_PER_REV = 2100;
+constexpr uint16_t TICKS_PER_REV = 356;
 
 constexpr float robotWidth = 4.5;
 constexpr float wheelRadius = 3.25;
