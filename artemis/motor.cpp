@@ -2,12 +2,14 @@
 
 #include "main.h"
 
-Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc) {}
+Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
 
 void Motor::begin() {
   pinMode(pinA, OUTPUT);
   pinMode(pinB, OUTPUT);
   pinMode(encoderPin, INPUT);
+  pidController.SetOutputLimits(0, 255);
+  pidController.SetMode(AUTOMATIC);
 }
 
 void Motor::rotateCW(uint8_t pwm) {
@@ -31,21 +33,6 @@ void Motor::activeBreak() {
   analogWrite(pinA, 255);
   analogWrite(pinB, 255);
 }
-
-// uint8_t Motor::controlSpeed() {
-
-//   encoder.speed = (encoder.encoderPos - lastEncoderCount) * 1000 / pidController.GetSampleTime();
-//   lastEncoderCount = encoder.encoderPos;
-
-//   //Run the PID calculation
-//   pidController.Compute();
-
-//   return Output;
-// }
-
-// void Motor::setSetpoint(uint8_t setpoint){
-//   Setpoint = setpoint;
-// }
 
 void Motor::encoderUpdate() {
   // CW increments and CCW decrements
@@ -77,7 +64,7 @@ void Motor::calculateSpeed() { // uses rolling average filter
     sum += 1e6f * (encBuf[b] - encBuf[a]) / (encBufTime[b] - encBufTime[a]);
   }
 
-  speed = sum / (encBufLength-1) / TICKS_PER_REV; // rps
+  speed = abs(sum / (encBufLength-1) / TICKS_PER_REV); // rps
 
 }
 
@@ -94,23 +81,23 @@ void registerEncoderISRs() {
   attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateLeftEncoder, RISING);
 }
 
-void forward(uint8_t pwm){
-  if (orientation == IMU_FACE_UP) {
-    leftMotor.rotateCCW(pwm);
-    rightMotor.rotateCW(pwm);
+void forward(uint8_t pwmL, uint8_t pwmR){
+  if (orientation == IMU_FACE_UP) { /// these might need to be swapped.
+    leftMotor.rotateCCW(pwmL);
+    rightMotor.rotateCW(pwmR);
   } else {
-    leftMotor.rotateCW(pwm);
-    rightMotor.rotateCCW(pwm);
+    leftMotor.rotateCW(pwmL);
+    rightMotor.rotateCCW(pwmR);
   }
 }
 
-void backward(uint8_t pwm){
+void backward(uint8_t pwmL, uint8_t pwmR){
   if (orientation == IMU_FACE_UP) {
-    leftMotor.rotateCW(pwm);
-    rightMotor.rotateCCW(pwm);
+    leftMotor.rotateCW(pwmL);
+    rightMotor.rotateCCW(pwmR);
   } else {
-    leftMotor.rotateCCW(pwm);
-    rightMotor.rotateCW(pwm);
+    leftMotor.rotateCCW(pwmL);
+    rightMotor.rotateCW(pwmR);
   }
 }
 
@@ -124,10 +111,89 @@ void activeBreak() {
   rightMotor.activeBreak();
 }
 
-void calculateMotorSpeeds() {
-  while (1) {
-    leftMotor.calculateSpeed();
-    rightMotor.calculateSpeed();
+// void calculateMotorSpeeds() {
+//   while (1) {
+//     leftMotor.calculateSpeed();
+//     rightMotor.calculateSpeed();
+//     rtos::ThisThread::sleep_for(2ms);
+//   }
+// }
+
+void controlMotorSpeeds() {
+  while(1){
+    if (throwbotState == DRIVE) {
+      leftMotor.Setpoint= 0.4;
+      rightMotor.Setpoint = 0.4;
+
+      // should get speed when it is needed rather than putting it in it's own thread
+      leftMotor.calculateSpeed();
+      rightMotor.calculateSpeed();
+
+    //Run the PID calculation
+    leftMotor.pidController.Compute();
+    rightMotor.pidController.Compute();
+
+    forward(leftMotor.Output, rightMotor.Output);      
+    }
+    rtos::ThisThread::sleep_for(2ms);
+  }  
+}
+
+// Function not finished
+// void controlMotorSpeedsWithIMU() {
+//   while(1) {
+//     if (throwbotState == DRIVE) {
+
+//       pid_input = imu.yaw;
+//       pid_setpoint = drive_direction; // move this into main loop if we end up using this one.
+
+//       //Run the PID calculation
+//       pidController.Compute();
+//       uint8_t left_pwm, right_pwm;
+//       if (pid_output > 0) { // figure out which direction will give a positive error
+//         left_pwm = target_pwm;
+//         right_pwm = target_pwm - pid_output;
+        
+//         forward(target_pwm, target_pwm - pid_output);      
+//       } else {
+//         left_pwm = target_pwm;
+//         right_pwm = 
+//         forward(target_pwm - pid_output, target_pwm);
+//       }
+//     }
+//     rtos::ThisThread::sleep_for(2ms);
+//   }
+// }
+
+void controlMotorSpeedsWithEncoderCount() {
+  while(1) {
+    if (throwbotState == DRIVE) {
+
+      pid_input = abs(leftMotor.encoder) - rightMotor.encoder;
+      // acc_error += pid_input;
+      
+      // P = pid_input * Kp;
+      // I = acc_error * Ki * 0.001;
+      // D = Kd * (pid_input - prev_error) / 0.001;
+
+      //Run the PID calculation
+      pidController.Compute();
+
+      if (pid_input > 0){
+        leftpwm = target_pwm; 
+        rightpwm = target_pwm + abs(pid_output);
+        forward(target_pwm, target_pwm + abs(pid_output));
+      } else {
+        forward(target_pwm + abs(pid_output), target_pwm);
+        leftpwm = target_pwm + abs(pid_output);
+        rightpwm = target_pwm;
+      }
+      // prev_error = pid_input;
+    }
     rtos::ThisThread::sleep_for(2ms);
   }
 }
+
+
+
+
