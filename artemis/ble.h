@@ -1,0 +1,2 @@
+void initBLE();
+void BLEComm();

@@ -4,6 +4,7 @@
 #include <Wire.h>
 #include <MPU9250.h>
 #include <SparkFun_VL53L5CX_Library.h>
+#include "ble.h"
 #include "control.h"
 #include "motor.h"
 #include "test.h"
