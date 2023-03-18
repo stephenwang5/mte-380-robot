@@ -1,5 +1,6 @@
 #include "main.h"
-#include "PID_v1.h"
+
+using namespace rtos::ThisThread;
 
 //bridged pin 6 to pin 34 on board because pin 34 wouldnt output a PWM
 // Motor(pinA, pinB, pinEncoder);
@@ -12,9 +13,19 @@ rtos::Mutex i2cLock("I2C Lock");
 
 SparkFun_VL53L5CX tof;
 VL53L5CX_ResultsData tofData;
+rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 
-// rtos::Thread motorSpeedTask;
+enum ThrowBotState {
+  IDLE,
+  READY,
+  SURVEY,
+  CONFIRM,
+  DRIVE,
+} throwbotState; // define states and initialize the state variable
+
+rtos::Thread bleTask;
+rtos::Thread motorSpeedTask;
 rtos::Thread motorControlTask;
 rtos::Thread tofInputTask;
 rtos::Thread imuInputTask(osPriorityNormal, OS_STACK_SIZE, nullptr, "imu");
@@ -23,19 +34,8 @@ rtos::Thread pathPlanningTask;
 rtos::Thread debugPrinter;
 void printDebugMsgs();
 
-ThrowBotState throwbotState = IDLE;
-bool firstDriveScan;
-double drive_direction;
-
-// Variables for general PID used to match encoder ticks from both motors
-double pid_setpoint, pid_output, pid_input;
-double Kp=1, Ki=0.1, Kd=0;
-PID pidController(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
-uint8_t target_pwm = 50; //0-255
-uint8_t leftpwm, rightpwm;
-
 template<typename T>
-void printBuf(const T* const buf, uint8_t col, uint8_t row=0) {
+void printBuf(const T* const buf, uint8_t col, uint8_t row=1) {
   for (int j = 0; j < row; j++) {
     for (int i = 0; i < col; i++) {
       Serial.print(buf[i + j*col]);
@@ -43,6 +43,13 @@ void printBuf(const T* const buf, uint8_t col, uint8_t row=0) {
     }
     Serial.println();
   }
+}
+
+template<typename T>
+void printBufBytes(const T* const buf, uint8_t len) {
+  uint16_t size = len * sizeof(T);
+  Serial.write((uint8_t*)buf, size);
+  Serial.write("\n");
 }
 
 void setup() {
@@ -59,22 +66,21 @@ void setup() {
 
   initToF();
   initIMU();
+  initBLE();
 
   leftMotor.begin();
   rightMotor.begin();
   registerEncoderISRs();
 
   throwbotState = IDLE;
-  firstDriveScan = true;
 
   findOrientation();
 
   // motorSpeedTask.start(calculateMotorSpeeds);
   tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
-  //motorControlTask.start(controlMotorSpeeds);
-  motorControlTask.start(controlMotorSpeedsWithEncoderCount);
-  debugPrinter.start(printDebugMsgs);
+  bleTask.start(BLEComm);
+  // debugPrinter.start(printTof);
 
   pidController.SetOutputLimits(-255 + target_pwm, 255 - target_pwm);
   pidController.SetMode(AUTOMATIC);
@@ -83,36 +89,52 @@ void setup() {
 
 void loop() {
 
-  // state transition logic here
-  // threads are statically allocated then started/stopped here
-  switch (throwbotState){
-    case IDLE:
-    //
-      throwbotState = READY;
-    case READY:
-    //
-      throwbotState = SURVEY;
-    case SURVEY:
-    //
-      throwbotState = DRIVE;
-    case DRIVE:
-    //
-      if (firstDriveScan) {
-        //drive_direction = imu.yaw; // for if we decide to steer with imu
-        firstDriveScan = false;
-        pid_setpoint = 0;
+  if (throwbotState == IDLE) {
+
+    while (imuMagnitude() > freeFallThreshold) {
+      sleep_for(100ms);
+    }
+    throwbotState = READY;
+
+  } else if (throwbotState == READY) {
+
+    sleep_for(3s);
+    findOrientation();
+    throwbotState = SURVEY;
+
+  } else if (throwbotState == SURVEY) {
+
+    spinCCW(25);
+    while (tofMatch < 0) {
+      sleep_for(30ms);
+    }
+    throwbotState = CONFIRM;
+
+  } else if (throwbotState == CONFIRM) {
+
+    // double back because the robot overshoots the target
+    spinCW(25);
+    sleep_for(500ms);
+    coast();
+    uint8_t ctr = 0;
+    while (ctr >= 0 && ctr < 3) {
+      if (tofMatch < 0) {
+        ctr--;
+      } else {
+        ctr++;
       }
-        
-      //throwbotState = STOP; // is currently commented out to test motor control threads
-    case STOP:
-      //
-    default:
-      //
-      //do nothing
-    break;
+      sleep_for(150ms);
+    }
+    throwbotState = (ctr==3) ? DRIVE : SURVEY;
+
+  } else if (throwbotState == DRIVE) {
+
+    forward(40, 40);
+    sleep_for(500ms);
+    throwbotState = SURVEY;
+
   }
- 
-  delay(1000);
+
 }
 
 void printDebugMsgs() {
@@ -122,42 +144,39 @@ void printDebugMsgs() {
     // Serial.print(rightMotor.speed);
     // Serial.println();
 
-    // printBuf<int16_t>(tofData.distance_mm, 8, 8);
-    // Serial.println("\n\n\n");
+    Serial.print(imu.yaw);
+    Serial.print(",");
+    Serial.print(imu.pitch);
+    // Serial.print(",");
+    // Serial.print(imu.roll);
+    Serial.println();
 
-    // Serial.print("leftMotor input speed ");
-    // Serial.println(leftMotor.speed);
-    // Serial.print("leftMotor output pwm ");
-    // Serial.println(leftMotor.Output);
-    // Serial.print("rightMotor input speed ");
-    // Serial.println(rightMotor.speed);
-    // Serial.print("rightMotor output pwm ");
-    // Serial.println(rightMotor.Output);
+    rtos::ThisThread::sleep_for(50ms);
+  }
+}
 
-    Serial.print("PID output ");
-    Serial.println(pid_output);
-    Serial.print("left encoder count ");
-    Serial.print(leftMotor.encoder);
-    Serial.print(", output pwm ");
-    Serial.print(leftpwm);
-    Serial.print(" , speed ");
-    Serial.println(leftMotor.speed);
-    Serial.print("rightMotor encoder count ");
-    Serial.print(rightMotor.encoder);
-    Serial.print(", output pwm ");
-    Serial.print(rightpwm);
-    Serial.print(", speed ");
-    Serial.println(rightMotor.speed);
+void printTof() {
+  while (1) {
+    rtos::ThisThread::sleep_for(100ms);
 
-    // Serial.print("P: ");
-    // Serial.print(P);
-    // Serial.print(", I: ");
-    // Serial.print(I);
-    // Serial.print(", D: ");
-    // Serial.println(D);
-    // Serial.print("PID output ");
-    // Serial.println(pid_output);
+    tofDataLock.lock();
 
-    rtos::ThisThread::sleep_for(500ms);
+    // if (tofMatch >= 0) {
+    //   Serial.println(tofMatch);
+    //   // printBuf<float>(tofDotProduct, 4);
+    //   printBuf<float>(tofNormalized, 8, 8);
+    //   Serial.println();
+    // }
+    // printBuf<float>(tofDotProduct, strideLen);
+    // Serial.print(bufMax(tofDotProduct, strideLen));
+    // Serial.println();
+    // printBuf<float>(tofNormalized, 8, 8);
+    // Serial.println();
+    // printBuf<float>(tofNormalized, 64);
+    // printBufBytes<int16_t>(tofData.distance_mm, 64);
+    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
+    Serial.println();
+
+    tofDataLock.unlock();
   }
 }

@@ -2,11 +2,17 @@
 
 #include <MPU9250.h>
 #include <quaternionFilters.h>
+#include <math.h>
 #include "main.h"
 
 Orientation orientation;
 
+float imuMagnitude() {
+  return sqrt(imu.ax*imu.ax + imu.ay * imu.ay + imu.az * imu.az);
+}
+
 void initIMU() {
+  imu.Mmode = 0b110;
   imu.initMPU9250();
   imu.initAK8963(imu.factoryMagCalibration);
 
@@ -31,9 +37,13 @@ void readIMU() {
   imu.gy = (float)imu.gyroCount[1] * imu.gRes;
   imu.gz = (float)imu.gyroCount[2] * imu.gRes;
 
-  imu.mx = (float)imu.magCount[0] * imu.factoryMagCalibration[0] - imu.magBias[0];
-  imu.my = (float)imu.magCount[1] * imu.factoryMagCalibration[1] - imu.magBias[1];
-  imu.mz = (float)imu.magCount[2] * imu.factoryMagCalibration[2] - imu.magBias[2];
+  // here are the magnetometer directions
+  // x is along the robot motor axel
+  // y is pointing in the robot heading
+  // z is pointing up
+  imu.mx = (float)imu.magCount[0] * imu.mRes * magXScale + magXBias;
+  imu.my = (float)imu.magCount[1] * imu.mRes * magYScale + magYBias;
+  imu.mz = (float)imu.magCount[2] * imu.mRes * magZScale + magZBias;
 
   imu.updateTime();
   MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD,
@@ -63,10 +73,10 @@ void readIMU() {
 void imuReadLoop() {
   while (1) {
     readIMU();
-    rtos::ThisThread::sleep_for(50ms);
+    rtos::ThisThread::sleep_for(15ms);
   }
 }
 
 void findOrientation() {
-  orientation = IMU_FACE_UP;
+  orientation = imu.az > 0 ? IMU_FACE_UP : IMU_FACE_DOWN;
 }

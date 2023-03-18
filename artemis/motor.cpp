@@ -121,20 +121,18 @@ void activeBreak() {
 
 void controlMotorSpeeds() {
   while(1){
-    if (throwbotState == DRIVE) {
-      leftMotor.Setpoint= 0.4;
-      rightMotor.Setpoint = 0.4;
+    leftMotor.Setpoint= 0.4;
+    rightMotor.Setpoint = 0.4;
 
-      // should get speed when it is needed rather than putting it in it's own thread
-      leftMotor.calculateSpeed();
-      rightMotor.calculateSpeed();
+    // should get speed when it is needed rather than putting it in it's own thread
+    leftMotor.calculateSpeed();
+    rightMotor.calculateSpeed();
 
-    //Run the PID calculation
-    leftMotor.pidController.Compute();
-    rightMotor.pidController.Compute();
+  //Run the PID calculation
+  leftMotor.pidController.Compute();
+  rightMotor.pidController.Compute();
 
-    forward(leftMotor.Output, rightMotor.Output);      
-    }
+  forward(leftMotor.Output, rightMotor.Output);      
     rtos::ThisThread::sleep_for(2ms);
   }  
 }
@@ -167,29 +165,27 @@ void controlMotorSpeeds() {
 
 void controlMotorSpeedsWithEncoderCount() {
   while(1) {
-    if (throwbotState == DRIVE) {
 
-      pid_input = abs(leftMotor.encoder) - rightMotor.encoder;
-      // acc_error += pid_input;
-      
-      // P = pid_input * Kp;
-      // I = acc_error * Ki * 0.001;
-      // D = Kd * (pid_input - prev_error) / 0.001;
+    pid_input = abs(leftMotor.encoder) - rightMotor.encoder;
+    // acc_error += pid_input;
+    
+    // P = pid_input * Kp;
+    // I = acc_error * Ki * 0.001;
+    // D = Kd * (pid_input - prev_error) / 0.001;
 
-      //Run the PID calculation
-      pidController.Compute();
+    //Run the PID calculation
+    pidController.Compute();
 
-      if (pid_input > 0){
-        leftpwm = target_pwm; 
-        rightpwm = target_pwm + abs(pid_output);
-        forward(target_pwm, target_pwm + abs(pid_output));
-      } else {
-        forward(target_pwm + abs(pid_output), target_pwm);
-        leftpwm = target_pwm + abs(pid_output);
-        rightpwm = target_pwm;
-      }
-      // prev_error = pid_input;
+    if (pid_input > 0){
+      leftpwm = target_pwm; 
+      rightpwm = target_pwm + abs(pid_output);
+      forward(target_pwm, target_pwm + abs(pid_output));
+    } else {
+      forward(target_pwm + abs(pid_output), target_pwm);
+      leftpwm = target_pwm + abs(pid_output);
+      rightpwm = target_pwm;
     }
+    // prev_error = pid_input;
     rtos::ThisThread::sleep_for(2ms);
   }
 }

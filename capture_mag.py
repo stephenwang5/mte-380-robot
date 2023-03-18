@@ -1,4 +1,4 @@
-#!/Users/stephenw/miniconda/envs/ml/bin/python3
+#!/usr/bin/env python3
 import serial
 import numpy as np
 import signal
