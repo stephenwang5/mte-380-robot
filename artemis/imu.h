@@ -16,9 +16,12 @@ constexpr float magXBias = 37;
 constexpr float magYBias = -450;
 constexpr float magZBias = 900;
 
+constexpr float freeFallThreshold = 3;
+
 void initIMU();
 void readIMU();
 void imuReadLoop();
 void findOrientation();
+float imuMagnitude();
 
 #endif // IMU_H

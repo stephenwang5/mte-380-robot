@@ -2,9 +2,14 @@
 
 #include <MPU9250.h>
 #include <quaternionFilters.h>
+#include <math.h>
 #include "main.h"
 
 Orientation orientation;
+
+float imuMagnitude() {
+  return sqrt(imu.ax*imu.ax + imu.ay * imu.ay + imu.az * imu.az);
+}
 
 void initIMU() {
   imu.Mmode = 0b110;
@@ -73,5 +78,5 @@ void imuReadLoop() {
 }
 
 void findOrientation() {
-  orientation = IMU_FACE_UP;
+  orientation = imu.az > 0 ? IMU_FACE_UP : IMU_FACE_DOWN;
 }
