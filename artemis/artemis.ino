@@ -76,11 +76,14 @@ void setup() {
 
   findOrientation();
 
-  motorSpeedTask.start(calculateMotorSpeeds);
+  // motorSpeedTask.start(calculateMotorSpeeds);
   tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   bleTask.start(BLEComm);
   // debugPrinter.start(printTof);
+
+  pidController.SetOutputLimits(-255 + target_pwm, 255 - target_pwm);
+  pidController.SetMode(AUTOMATIC);
 
 }
 
@@ -126,7 +129,7 @@ void loop() {
 
   } else if (throwbotState == DRIVE) {
 
-    forward(40);
+    forward(40, 40);
     sleep_for(500ms);
     throwbotState = SURVEY;
 

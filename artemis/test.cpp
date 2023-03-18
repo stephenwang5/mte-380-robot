@@ -83,13 +83,13 @@ void rampUpBothMotors() {
 void motorDemo() {
   turnInPlace(-90);
   delay(2000);
-  forward(100);
+  forward(100, 100);
   delay(2000);
   coast();
   delay(2000);
   turnInPlace(90);
   delay(2000);
-  backward(100);
+  backward(100, 100);
   delay(2000);
   coast();
   delay(4000);
