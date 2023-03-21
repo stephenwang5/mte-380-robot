@@ -16,13 +16,7 @@ VL53L5CX_ResultsData tofData;
 rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 
-enum ThrowBotState {
-  IDLE,
-  READY,
-  SURVEY,
-  CONFIRM,
-  DRIVE,
-} throwbotState; // define states and initialize the state variable
+ThrowBotState throwbotState; // define states and initialize the state variable
 
 rtos::Thread bleTask;
 rtos::Thread motorSpeedTask;

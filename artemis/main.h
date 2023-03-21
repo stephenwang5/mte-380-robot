@@ -23,6 +23,15 @@ constexpr uint16_t TICKS_PER_REV = 356;
 constexpr float robotWidth = 4.5;
 constexpr float wheelRadius = 3.25;
 
+typedef enum {
+  IDLE,
+  READY,
+  SURVEY,
+  CONFIRM,
+  DRIVE,
+} ThrowbotState;
+
+extern ThrowbotState throwbotState;
 extern Motor leftMotor;
 extern Motor rightMotor;
 extern TwoWire i2c;
