@@ -164,7 +164,7 @@ void controlMotorSpeedsWithEncoderCount() {
     // D = Kd * (pid_input - prev_error) / 0.001;
 
     //Run the PID calculation
-    pidController.Compute();
+    straightLinePID.Compute();
 
     if (pid_input > 0){
       leftpwm = target_pwm; 

@@ -72,7 +72,7 @@ void setup() {
 
   imuInputTask.start(imuReadLoop);
   bleTask.start(BLEComm);
-  debugPrinter.start(printTof);
+  // debugPrinter.start(printDebugMsgs);
 
 }
 
@@ -99,7 +99,7 @@ void loop() {
 
     Serial.println("started surveying");
 
-    spinCCW(25);
+    spinCCW(100);
     while (tofMatch < 0) {
       sleep_for(30ms);
     }
