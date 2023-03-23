@@ -6,7 +6,7 @@
 // Variables for general PID used to match encoder ticks from both motors
 extern double pid_setpoint, pid_output, pid_input;
 extern double Kp, Ki, Kd;
-extern PID pidController;
+extern PID straightLinePID;
 extern uint8_t target_pwm; //0-255
 
 extern uint8_t leftpwm, rightpwm;

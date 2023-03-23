@@ -8,8 +8,8 @@ void Motor::begin() {
   pinMode(pinA, OUTPUT);
   pinMode(pinB, OUTPUT);
   pinMode(encoderPin, INPUT);
-  pidController.SetOutputLimits(0, 255);
-  pidController.SetMode(AUTOMATIC);
+  straightLinePID.SetOutputLimits(-255 + target_pwm, 255 - target_pwm);
+  straightLinePID.SetMode(AUTOMATIC);
 }
 
 void Motor::rotateCW(uint8_t pwm) {
@@ -111,18 +111,8 @@ void activeBreak() {
   rightMotor.activeBreak();
 }
 
-// void calculateMotorSpeeds() {
-//   while (1) {
-//     leftMotor.calculateSpeed();
-//     rightMotor.calculateSpeed();
-//     rtos::ThisThread::sleep_for(2ms);
-//   }
-// }
-
 void controlMotorSpeeds() {
   while(1){
-    leftMotor.Setpoint= 0.4;
-    rightMotor.Setpoint = 0.4;
 
     // should get speed when it is needed rather than putting it in it's own thread
     leftMotor.calculateSpeed();
