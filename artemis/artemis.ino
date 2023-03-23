@@ -70,6 +70,7 @@ void setup() {
 
   findOrientation();
 
+  tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   bleTask.start(BLEComm);
   // debugPrinter.start(printDebugMsgs);
