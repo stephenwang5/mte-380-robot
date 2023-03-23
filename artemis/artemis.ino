@@ -16,7 +16,7 @@ VL53L5CX_ResultsData tofData;
 rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 
-ThrowBotState throwbotState; // define states and initialize the state variable
+ThrowbotState throwbotState; // define states and initialize the state variable
 
 rtos::Thread bleTask;
 rtos::Thread motorSpeedTask;
@@ -66,24 +66,22 @@ void setup() {
   rightMotor.begin();
   registerEncoderISRs();
 
-  throwbotState = IDLE;
+  throwbotState = SURVEY;
 
   findOrientation();
 
-  // motorSpeedTask.start(calculateMotorSpeeds);
-  tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   bleTask.start(BLEComm);
-  // debugPrinter.start(printTof);
-
-  pidController.SetOutputLimits(-255 + target_pwm, 255 - target_pwm);
-  pidController.SetMode(AUTOMATIC);
+  debugPrinter.start(printTof);
 
 }
 
 void loop() {
 
   if (throwbotState == IDLE) {
+
+    // wait for initial measurements to come through
+    sleep_for(200ms);
 
     while (imuMagnitude() > freeFallThreshold) {
       sleep_for(100ms);
@@ -92,11 +90,14 @@ void loop() {
 
   } else if (throwbotState == READY) {
 
+    forward(100, 100);
     sleep_for(3s);
     findOrientation();
     throwbotState = SURVEY;
 
   } else if (throwbotState == SURVEY) {
+
+    Serial.println("started surveying");
 
     spinCCW(25);
     while (tofMatch < 0) {
@@ -107,8 +108,7 @@ void loop() {
   } else if (throwbotState == CONFIRM) {
 
     // double back because the robot overshoots the target
-    spinCW(25);
-    sleep_for(500ms);
+    // spinCW(25);
     coast();
     uint8_t ctr = 0;
     while (ctr >= 0 && ctr < 3) {
@@ -133,44 +133,27 @@ void loop() {
 
 void printDebugMsgs() {
   while (1) {
-    // Serial.print(leftMotor.speed);
-    // Serial.print(",");
-    // Serial.print(rightMotor.speed);
-    // Serial.println();
 
-    Serial.print(imu.yaw);
+    Serial.print(imu.ax);
     Serial.print(",");
-    Serial.print(imu.pitch);
-    // Serial.print(",");
-    // Serial.print(imu.roll);
+    Serial.print(imu.ay);
+    Serial.print(",");
+    Serial.print(imu.az);
+    Serial.print(",");
+    Serial.print(imu.gx);
+    Serial.print(",");
+    Serial.print(imu.gy);
+    Serial.print(",");
+    Serial.print(imu.gz);
+    Serial.print(",");
+    Serial.print(imu.mx);
+    Serial.print(",");
+    Serial.print(imu.my);
+    Serial.print(",");
+    Serial.print(imu.mz);
+    Serial.print(",");
     Serial.println();
 
     rtos::ThisThread::sleep_for(50ms);
-  }
-}
-
-void printTof() {
-  while (1) {
-    rtos::ThisThread::sleep_for(100ms);
-
-    tofDataLock.lock();
-
-    // if (tofMatch >= 0) {
-    //   Serial.println(tofMatch);
-    //   // printBuf<float>(tofDotProduct, 4);
-    //   printBuf<float>(tofNormalized, 8, 8);
-    //   Serial.println();
-    // }
-    // printBuf<float>(tofDotProduct, strideLen);
-    // Serial.print(bufMax(tofDotProduct, strideLen));
-    // Serial.println();
-    // printBuf<float>(tofNormalized, 8, 8);
-    // Serial.println();
-    // printBuf<float>(tofNormalized, 64);
-    // printBufBytes<int16_t>(tofData.distance_mm, 64);
-    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
-    Serial.println();
-
-    tofDataLock.unlock();
   }
 }

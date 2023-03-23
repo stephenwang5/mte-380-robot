@@ -104,7 +104,7 @@ int extractToF() {
 
   // minBuf<int16_t>(tofData.distance_mm, tofNormalized, 1000, 64);
   preprocess(tofData.distance_mm, tofData.range_sigma_mm, 64);
-  normalizeBuf<float>(tofNormalized, tofNormalized, 64);
+  normalizeBuf<int16_t>(tofData.distance_mm, tofNormalized, 64);
 
   setZero<float>(tofDotProduct, strideLen);
   for (int stride = 0; stride < strideLen; stride++) {
