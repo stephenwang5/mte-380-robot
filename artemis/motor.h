@@ -25,7 +25,7 @@ public:
   Direction direction;
 
   // TODO: if the PID gain terms aren't dynamic, make them constexpr
-  double Kp=10, Ki=15, Kd=70;
+  double Kp=40, Ki=1.0, Kd=1.0;
   double lastEncoderCount = 0;
 
   Motor(PinName a, PinName b, PinName enc);
@@ -43,14 +43,31 @@ public:
   PID pidController; // Leaving this here as we decide which PID to use
 };
 
+// Variables for general PID used to match encoder ticks from both motors
+extern double pid_setpoint, pid_output, pid_input;
+constexpr double Kp=1, Ki=0.1, Kd=0;
+extern PID straightDrivePID;
+extern uint8_t pwm_straight_drive; //0-255
+extern bool pole_located;
+extern bool survey_timeout;
+
+extern uint8_t leftpwm, rightpwm;
+// int acc_error;
+// double P;
+// double I;
+// double D;
+// int prev_error;
+
+void spinCCW(uint8_t pwmL, uint8_t pwmR);
+void spinCW(uint8_t pwmL, uint8_t pwmR);
 void registerEncoderISRs();
-void forward(uint8_t, uint8_t);
-void backward(uint8_t, uint8_t);
+void forward(uint8_t pwmL, uint8_t pwmR);
+void backward(uint8_t pwmL, uint8_t pwmR);
 void coast();
 void activeBreak();
 void calculateMotorSpeeds();
-void controlMotorSpeeds();
-void controlMotorSpeedsWithEncoderCount();
-
+void controlMotorSpeedsForTurning();
+void TurnInPlaceByNumDegrees(float degrees);
+void driveStraight();
 
 #endif // MOTOR_H

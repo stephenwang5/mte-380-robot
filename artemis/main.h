@@ -6,7 +6,6 @@
 #include <SparkFun_VL53L5CX_Library.h>
 #include <PID_v1.h>
 #include "ble.h"
-#include "control.h"
 #include "motor.h"
 #include "tof.h"
 #include "timer.h"
@@ -18,10 +17,10 @@
 using namespace std::chrono_literals;
 
 constexpr uint32_t I2C_FREQ = 400000;
-constexpr uint16_t TICKS_PER_REV = 356;
+constexpr uint16_t TICKS_PER_REV = 1470; //350; // 350 for faster motor, 1470 for the slower motor. Reduction ratio is 6 for the slower motor.
 
-constexpr float robotWidth = 4.5;
-constexpr float wheelRadius = 3.25;
+constexpr float robotWidth = 4.0;
+constexpr float wheelDiameter = 3.85;
 
 typedef enum {
   IDLE,
@@ -29,6 +28,8 @@ typedef enum {
   SURVEY,
   CONFIRM,
   DRIVE,
+  STOP,
+  MOVE_TO_NEW_LOCATION,
 } ThrowbotState;
 
 extern ThrowbotState throwbotState;

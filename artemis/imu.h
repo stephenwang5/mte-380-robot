@@ -4,9 +4,11 @@
 typedef enum {
   IMU_FACE_UP,
   IMU_FACE_DOWN,
+  UNKNOWN,
 } Orientation;
 
 extern Orientation orientation;
+extern bool launch_detected;
 
 constexpr float magXScale = 1.23;
 constexpr float magYScale = 1.23;
@@ -23,5 +25,6 @@ void readIMU();
 void imuReadLoop();
 void findOrientation();
 float imuMagnitude();
+void DetectLaunch();
 
 #endif // IMU_H

@@ -8,7 +8,7 @@ void turnInPlace(int degrees) {
   constexpr int pwm = 100;
 
   float turnDist = PI*12*(abs(degrees))/360.0f; // turn distance of each wheel
-  uint16_t numticks = uint16_t((turnDist*TICKS_PER_REV)/(PI*2*wheelRadius)); // number of encoder ticks needed to turn provided number of degrees
+  uint16_t numticks = uint16_t((turnDist*TICKS_PER_REV)/(PI*wheelDiameter)); // number of encoder ticks needed to turn provided number of degrees
 
   const int R_startPos = rightMotor.encoder;
   const int L_startPos = leftMotor.encoder;

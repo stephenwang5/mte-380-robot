@@ -1,3 +1,4 @@
+#include "ThisThread.h"
 #include "imu.h"
 
 #include <MPU9250.h>
@@ -6,15 +7,17 @@
 #include "main.h"
 
 Orientation orientation;
+bool launch_detected;
 
 float imuMagnitude() {
   return sqrt(imu.ax*imu.ax + imu.ay * imu.ay + imu.az * imu.az);
 }
 
 void initIMU() {
-  imu.Mmode = 0b110;
+  imu.Mmode = 0x06; // sets sample rate to 100Hz
   imu.initMPU9250();
   imu.initAK8963(imu.factoryMagCalibration);
+  imu.Mmode;
 
   imu.getAres();
   imu.getGres();
@@ -73,10 +76,56 @@ void readIMU() {
 void imuReadLoop() {
   while (1) {
     readIMU();
-    rtos::ThisThread::sleep_for(15ms);
+    rtos::ThisThread::sleep_for(10ms);  // sample rate is 100 hz, therefore need to delay 10ms or more
   }
 }
 
 void findOrientation() {
-  orientation = imu.az > 0 ? IMU_FACE_UP : IMU_FACE_DOWN;
+  float az = 0;
+  int count = 0;
+  // get 5 readings
+  for (int i = 0; i < 5; i++){
+    //readIMU();
+    az = imu.az;
+    if( az > 0.8){
+      count++;
+    }
+    else if(az < -0.8){
+      count--;
+    }
+    rtos::ThisThread::sleep_for(15ms);
+  }
+
+  if (count > 1){
+    orientation = IMU_FACE_DOWN;
+  } else if (count < -1) {
+    orientation = IMU_FACE_UP;
+  }
+  else {
+    orientation = UNKNOWN;
+  }
+}
+
+
+void DetectLaunch() {
+  int count = 0;
+  while(1) {
+    if (throwbotState == IDLE) {
+      // check for the magnitude of the acceleration to drop below 1g indicating free fall
+      // the robot will enter "free-fall" in the eyes of the IMU as soon as the robot is launched
+
+      int accel_mag = sqrt(imu.ax*imu.ax + imu.ay*imu.ay + imu.az+imu.az);
+      if (accel_mag < 0.8) {
+        count++;
+      }
+      else {
+        count = 0;
+      }
+      
+      if (count > 3) {
+        launch_detected = true;
+      } 
+    }
+    rtos::ThisThread::sleep_for(15ms);
+  }
 }

@@ -1,5 +1,7 @@
 #include "timer.h"
 
+//*****UN USED *****
+
 namespace rtos {
 
   osStatus_t Timer::start(osTimerFunc_t callback, void* arg, uint32_t dur) {
