@@ -15,6 +15,7 @@ SparkFun_VL53L5CX tof;
 VL53L5CX_ResultsData tofData;
 rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
+float homeMagZLocation = 0;
 
 // define states and initialize the state variable
 
@@ -92,19 +93,39 @@ void loop() {
     // wait for initial measurements to come through
     sleep_for(200ms);
 
-    // while (imuMagnitude() > freeFallThreshold) {
-    //   sleep_for(100ms);
-    // }
+    findOrientation();
 
-    // if (launch_detected) {
-    //   launchDetection.terminate();
-    //   sleep_for(4s);
-    //   throwbotState = READY;
-    // }
+    // assuming that there is enough time for the buffer to fill up
+    // and no 0s will be used as the home position
+    float magZBuf[10] = {0};
+    uint8_t bufIdx = 0;
+
+    while (imuMagnitude() > freeFallThreshold) {
+
+      magZBuf[bufIdx] = findHeading();
+      // use the measurement in the past 1 second as the home orientation
+      homeMagZLocation = magZbuf[(bufIdx+9) % 10];
+
+      bufIdx++;
+
+      sleep_for(100ms);
+    }
     throwbotState = READY;
   } else if (throwbotState == READY) {
-    findOrientation();  
-    //throwbotState = SURVEY;
+
+    // in the air
+    sleep_for(3s);
+
+    // optional: spin to correct
+    spinCW(40);
+    sleep_for(3s);
+    throwbotState = IDLE;
+    // findOrientation();
+    // turnInPlaceByMag((homeHeading + 3.14) % 1.57, 38);
+    // // TODO: spin back to home position
+    // findOrientation();
+    // throwbotState = SURVEY;
+
   } else if (throwbotState == SURVEY) {
     int num_turns = 0, degrees = 30;
     while(!tofMatch || num_turns < 2*360/degrees) {
