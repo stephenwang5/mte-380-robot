@@ -21,6 +21,7 @@ MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 rtos::Thread bleTask;
 rtos::Thread motorSpeedTask;
 rtos::Thread motorControlTask;
+rtos::Thread driveStraightTask;
 rtos::Thread tofInputTask;
 rtos::Thread imuInputTask(osPriorityNormal, OS_STACK_SIZE, nullptr, "imu");
 // correct path drift due to wheel slip using odometry estimation
@@ -66,7 +67,7 @@ void setup() {
 
   //initToF();
   initIMU();
-  //initBLE();
+  initBLE();
 
   leftMotor.begin();
   rightMotor.begin();
@@ -78,7 +79,7 @@ void setup() {
   //tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   //motorControlTask.start(controlMotorSpeeds);
-  motorControlTask.start(driveStraight);
+  //motorControlTask.start(driveStraight);
   debugPrinter.start(printDebugMsgs);
   //bleTask.start(BLEComm);
   //launchDetection.start(DetectLaunch);
@@ -112,10 +113,12 @@ void loop() {
   } else if (throwbotState == SURVEY) {
     int num_turns = 0, degrees = 30;
     while(!tofMatch || num_turns < 2*360/degrees) {
-      TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
-      sleep_for(300ms);
-      num_turns++;
+      motorControlTask.start(controlMotorSpeedsForTurning);
+      //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
+      //sleep_for(300ms);
+      //num_turns++;
     }
+    motorControlTask.terminate();
     if (tofMatch) {
       throwbotState = CONFIRM;
     } else if (num_turns > 2*360/degrees) { // robot has not been able to locate the pole for the past two full rotation. The robot needs to move
@@ -137,6 +140,7 @@ void loop() {
     }
     throwbotState = (ctr==3) ? DRIVE : SURVEY;
   } else if (throwbotState == DRIVE) {
+    driveStraightTask.start(driveStraight);
     // if (firstDriveScan) {
     //   //drive_direction = imu.yaw; // for if we decide to steer with imu
     //   firstDriveScan = false;
@@ -152,10 +156,11 @@ void loop() {
     tofDataLock.unlock();
    
   } else if (throwbotState == STOP) {
+    driveStraightTask.terminate();
     coast();
   }
  
-  delay(100);
+  delay(50);
 }
 
 void printDebugMsgs() {
