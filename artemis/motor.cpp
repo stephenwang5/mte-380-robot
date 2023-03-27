@@ -2,6 +2,14 @@
 
 #include "main.h"
 
+inline float abs(float a) {
+  return a>0 ? a : -a;
+}
+
+inline bool closeTo(float a, float b) {
+  return abs(a-b) > 1e-1;
+}
+
 int target_turn_pwm = 19;
 // Variables for general PID used to match encoder ticks from both motors
 double pid_setpoint = 0; double pid_output, pid_input;
@@ -194,6 +202,19 @@ void driveStraight() {
     // prev_error = pid_input; 
     rtos::ThisThread::sleep_for(2ms);
   }
+}
+
+void turnInPlaceByMag(float targetMag, uint8_t pwm) {
+  // to ensure that the target is within the range of atan
+  targetMag = targetMag - (int)(targetMag / (3.14/2)) * 3.14/2;
+
+  spinCCW(30, 25);
+
+  while (!closeTo(atan(imu.my / imu.mx), targetMag)) {
+    rtos::ThisThread::sleep_for(5ms);
+  }
+
+  coast();
 }
 
 void TurnInPlaceByNumDegrees(float degrees){

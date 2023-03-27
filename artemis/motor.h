@@ -69,5 +69,6 @@ void calculateMotorSpeeds();
 void controlMotorSpeedsForTurning();
 void TurnInPlaceByNumDegrees(float degrees);
 void driveStraight();
+void turnInPlaceByMag(float targetMag, uint8_t pwm);
 
 #endif // MOTOR_H
