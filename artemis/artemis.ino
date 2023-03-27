@@ -20,7 +20,7 @@ MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 
 rtos::Thread bleTask;
 rtos::Thread motorSpeedTask;
-rtos::Thread motorControlTask;
+rtos::Thread surveyTurnTask;
 rtos::Thread driveStraightTask;
 rtos::Thread tofInputTask;
 rtos::Thread imuInputTask(osPriorityNormal, OS_STACK_SIZE, nullptr, "imu");
@@ -31,9 +31,6 @@ rtos::Thread launchDetection;
 void printDebugMsgs();
 
 ThrowbotState throwbotState;
-
-//variables for post detection
-bool pole_located = false, survey_timeout = false;
 
 template<typename T>
 void printBuf(const T* const buf, uint8_t col, uint8_t row=1) {
@@ -65,7 +62,7 @@ void setup() {
   i2c.begin();
   i2c.setClock(I2C_FREQ);
 
-  //initToF();
+  initToF();
   initIMU();
   initBLE();
 
@@ -76,12 +73,10 @@ void setup() {
   throwbotState = IDLE;
 
   motorSpeedTask.start(calculateMotorSpeeds);
-  //tofInputTask.start(readToF);
+  tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
-  //motorControlTask.start(controlMotorSpeeds);
-  //motorControlTask.start(driveStraight);
   debugPrinter.start(printDebugMsgs);
-  //bleTask.start(BLEComm);
+  bleTask.start(BLEComm);
   //launchDetection.start(DetectLaunch);
 
   straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
@@ -113,18 +108,17 @@ void loop() {
   } else if (throwbotState == SURVEY) {
     int num_turns = 0, degrees = 30;
     while(!tofMatch || num_turns < 2*360/degrees) {
-      motorControlTask.start(controlMotorSpeedsForTurning);
+      surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
       //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
       //sleep_for(300ms);
       //num_turns++;
     }
-    motorControlTask.terminate();
+    surveyTurnTask.terminate();
     if (tofMatch) {
       throwbotState = CONFIRM;
     } else if (num_turns > 2*360/degrees) { // robot has not been able to locate the pole for the past two full rotation. The robot needs to move
       throwbotState = MOVE_TO_NEW_LOCATION;
     }
-    //throwbotState = DRIVE;
   } else if (throwbotState == CONFIRM) {
     // double back because the robot overshoots the target
     // spinCW(25);
@@ -141,13 +135,7 @@ void loop() {
     throwbotState = (ctr==3) ? DRIVE : SURVEY;
   } else if (throwbotState == DRIVE) {
     driveStraightTask.start(driveStraight);
-    // if (firstDriveScan) {
-    //   //drive_direction = imu.yaw; // for if we decide to steer with imu
-    //   firstDriveScan = false;
-    //   
-    //   leftMotor.Setpoint= 0.2;
-    //   rightMotor.Setpoint = 0.2;
-    // }
+
     tofDataLock.lock();
     if (tofData.distance_mm[2,4] < 100)
     {
