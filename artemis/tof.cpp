@@ -88,15 +88,20 @@ void preprocess(int16_t* m, uint16_t* s, uint8_t len) {
 }
 
 int extractToF() {
+  // remember that when the imu faces up,
+  // 0th measurement is the bottom right, the measurements then go left and up
+  // the kernel is made so that the reading order is natural
   constexpr float kernel[kernelRows][kernelCols] = {
+    // top left          top right
+    {0.0, 0.0, 0.0, 0.0, 0.0, },
+    {0.0, 0.0, 0.0, 0.0, 0.0, },
+    {0.0, 0.0, 0.0, 0.0, 0.0, },
     {2.0, -1.0, -4.0, -1.0, 2.0, },
     {1.9, -0.95, -3.8, -0.95, 1.9, },
     {1.805, -0.9025, -3.61, -0.9025, 1.805, },
     {1.71475, -0.857375, -3.4295, -0.857375, 1.71475, },
-    {2.0, -1.0, -3.0, -1.0, 2.0, },
-    {0.0, 0.0, 0.0, 0.0, 0.0, },
-    {0.0, 0.0, 0.0, 0.0, 0.0, },
-    {0.0, 0.0, 0.0, 0.0, 0.0, },
+    {1.629 , -0.8145, -2.4435 , -0.8145,  1.629, },
+    // bottom left                        bottom right
   };
   constexpr float threshold = -2;
 
@@ -107,10 +112,17 @@ int extractToF() {
   normalizeBuf<int16_t>(tofData.distance_mm, tofNormalized, 64);
 
   setZero<float>(tofDotProduct, strideLen);
-  for (int stride = 0; stride < strideLen; stride++) {
-    for (int row = 0; row < kernelRows; row++) {
-      for (int col = 0; col < kernelCols; col++) {
-        tofDotProduct[stride] += kernel[row][col] * tofNormalized[row*8 + col + stride];
+  for (uint8_t stride = 0; stride < strideLen; stride++) {
+    for (uint8_t row = 0; row < kernelRows; row++) {
+      for (uint8_t col = 0; col < kernelCols; col++) {
+
+        if (orientation == IMU_FACE_UP) {
+          tofDotProduct[stride] += kernel[row][col] *
+            tofNormalized[(kernelRows-1-row)*8 + (kernelCols-1-col) + (strideLen-1-stride)];
+        } else {
+          tofDotProduct[stride] += kernel[row][col] * tofNormalized[row*8 + col + stride];
+        }
+
       }
     }
   }
