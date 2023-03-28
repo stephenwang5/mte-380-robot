@@ -16,6 +16,7 @@ VL53L5CX_ResultsData tofData;
 rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
 float homeMagZLocation = 0;
+float imuMagnitudeNumber = 0;
 
 // define states and initialize the state variable
 
@@ -65,7 +66,7 @@ void setup() {
 
   initToF();
   initIMU();
-  initBLE();
+  // initBLE();
 
   leftMotor.begin();
   rightMotor.begin();
@@ -77,7 +78,7 @@ void setup() {
   tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   debugPrinter.start(printDebugMsgs);
-  bleTask.start(BLEComm);
+  // bleTask.start(BLEComm);
   //launchDetection.start(DetectLaunch);
 
   straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
@@ -93,53 +94,64 @@ void loop() {
     // wait for initial measurements to come through
     sleep_for(200ms);
 
-    findOrientation();
-
     // assuming that there is enough time for the buffer to fill up
     // and no 0s will be used as the home position
-    float magZBuf[10] = {0};
+    // float magZBuf[10] = {0};
     uint8_t bufIdx = 0;
 
-    while (imuMagnitude() > freeFallThreshold) {
+    imuMagnitudeNumber = imuMagnitude();
+    while (imuMagnitudeNumber > freeFallThreshold) {
+      imuMagnitudeNumber = imuMagnitude();
 
-      magZBuf[bufIdx] = findHeading();
+      // magZBuf[bufIdx] = findHeading();
       // use the measurement in the past 1 second as the home orientation
-      homeMagZLocation = magZBuf[(bufIdx+9) % 10];
+      // homeMagZLocation = magZBuf[(bufIdx+9) % 10];
 
       bufIdx++;
 
       sleep_for(100ms);
     }
     throwbotState = READY;
+
   } else if (throwbotState == READY) {
 
     // in the air
-    sleep_for(3s);
+    sleep_for(2s);
+    findOrientation();
+    findOrientation();
+    findOrientation();
+    
 
     // optional: spin to correct
-    spinCW(40, 40);
-    sleep_for(3s);
-    throwbotState = IDLE;
+    // spinCW(40, 40);
+    // sleep_for(1s);
+    // Serial.println("after sleeping");
+    // coast();
+    // throwbotState = IDLE;
+    // Serial.println("exiting ready");
     // findOrientation();
     // turnInPlaceByMag((homeHeading + 3.14) % 1.57, 38);
     // // TODO: spin back to home position
     // findOrientation();
-    // throwbotState = SURVEY;
+    throwbotState = SURVEY;
 
   } else if (throwbotState == SURVEY) {
     int num_turns = 0, degrees = 30;
-    while(!tofMatch || num_turns < 2*360/degrees) {
-      surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
+    spinCW(30, 30);
+    while(tofMatch < 0 && num_turns < 2*360/degrees) {
+      // surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
       //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
-      //sleep_for(300ms);
+      sleep_for(300ms);
       //num_turns++;
     }
-    surveyTurnTask.terminate();
-    if (tofMatch) {
-      throwbotState = CONFIRM;
-    } else if (num_turns > 2*360/degrees) { // robot has not been able to locate the pole for the past two full rotation. The robot needs to move
-      throwbotState = MOVE_TO_NEW_LOCATION;
-    }
+    coast();
+    throwbotState = CONFIRM;
+    // surveyTurnTask.terminate();
+    // if (tofMatch) {
+    //   throwbotState = CONFIRM;
+    // } else if (num_turns > 2*360/degrees) { // robot has not been able to locate the pole for the past two full rotation. The robot needs to move
+    //   throwbotState = MOVE_TO_NEW_LOCATION;
+    // }
   } else if (throwbotState == CONFIRM) {
     // double back because the robot overshoots the target
     // spinCW(25);
@@ -252,14 +264,21 @@ void printDebugMsgs() {
 
     // Serial.println(orientation);
 
-    if (orientation == IMU_FACE_UP)
-    {
-      Serial.println("Face UP");
-    } else if (orientation == IMU_FACE_DOWN) {
-      Serial.println("Face DOWN");
-    }
+    // if (orientation == IMU_FACE_UP)
+    // {
+    //   Serial.println("Face UP");
+    // } else if (orientation == IMU_FACE_DOWN) {
+    //   Serial.println("Face DOWN");
+    // }
+
+    Serial.print(throwbotState);
+    // Serial.print(" magnitude: ");
+    // Serial.println(imuMagnitudeNumber);
+
+    printBuf<float>(tofDotProduct, 4);
+    Serial.println(tofMatch);
   
-    rtos::ThisThread::sleep_for(250ms);
+    rtos::ThisThread::sleep_for(100ms);
   }
 }
 

@@ -173,7 +173,10 @@ void controlMotorSpeedsForTurning() {
 
 void driveStraight() {
 
-  uint8_t target_pwm = 50; 
+  uint8_t target_pwm = 35; 
+  pid_setpoint = 0;
+  leftMotor.encoder = 0;
+  rightMotor.encoder = 0;
   while(1) {
     //pid_setpoint is 0, defined above
     pid_input = abs(leftMotor.encoder) - rightMotor.encoder;

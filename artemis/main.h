@@ -17,7 +17,8 @@
 using namespace std::chrono_literals;
 
 constexpr uint32_t I2C_FREQ = 400000;
-constexpr uint16_t TICKS_PER_REV = 1470; //350; // 350 for faster motor, 1470 for the slower motor. Reduction ratio is 6 for the slower motor.
+constexpr uint16_t TICKS_PER_REV = 735; //350; // 350 for faster motor, 1470 for the slower motor. Reduction ratio is 6 for the slower motor.
+// 1470 for the slowest motors
 
 constexpr float robotWidth = 4.0;
 constexpr float wheelDiameter = 3.85;

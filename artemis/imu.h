@@ -18,7 +18,7 @@ constexpr float magXBias = 37;
 constexpr float magYBias = -450;
 constexpr float magZBias = 900;
 
-constexpr float freeFallThreshold = 3;
+constexpr float freeFallThreshold = 0.3;
 
 void initIMU();
 void readIMU();
