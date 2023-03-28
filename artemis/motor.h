@@ -45,7 +45,7 @@ public:
 
 // Variables for general PID used to match encoder ticks from both motors
 extern double pid_setpoint, pid_output, pid_input;
-constexpr double Kp=1, Ki=0.1, Kd=0;
+extern double Kp, Ki, Kd;
 extern PID straightDrivePID;
 extern uint8_t pwm_straight_drive; //0-255
 extern bool pole_located;

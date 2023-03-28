@@ -22,6 +22,7 @@ rtos::Thread bleTask;
 rtos::Thread motorSpeedTask;
 rtos::Thread surveyTurnTask;
 rtos::Thread driveStraightTask;
+rtos::Thread driveToPoleTask;
 rtos::Thread tofInputTask;
 rtos::Thread imuInputTask(osPriorityNormal, OS_STACK_SIZE, nullptr, "imu");
 // correct path drift due to wheel slip using odometry estimation
@@ -81,7 +82,6 @@ void setup() {
 
   straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
   straightDrivePID.SetMode(AUTOMATIC);
-
 }
 
 void loop() {

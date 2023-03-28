@@ -3,8 +3,9 @@
 #include "main.h"
 
 int target_turn_pwm = 19;
-// Variables for general PID used to match encoder ticks from both motors
-double pid_setpoint = 0; double pid_output, pid_input;
+// General PID used to match encoder ticks from both motors to get it to drive straight
+double pid_setpoint, pid_output, pid_input;
+double Kp, Ki, Kd;
 PID straightDrivePID(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
 uint8_t pwm_straight_drive = 35; //0-255
 // uint8_t leftpwm, rightpwm;
@@ -126,10 +127,9 @@ void calculateMotorSpeeds() {
 }
 
 void controlMotorSpeedsForTurning() {
-  while(1){
-    leftMotor.Setpoint= 0.2;
-    rightMotor.Setpoint = 0.2;
-      
+  leftMotor.Setpoint = 0.2;
+  rightMotor.Setpoint = 0.2;
+  while(1){      
     //Run the PID calculation
     leftMotor.pidController.Compute();
     rightMotor.pidController.Compute();
@@ -168,8 +168,8 @@ void controlMotorSpeedsForTurning() {
 // }
 
 void driveStraight() {
-
-  uint8_t target_pwm = 50; 
+  pid_setpoint = 0;
+  Kp=1; Ki=0.1; Kd=0;
   while(1) {
     //pid_setpoint is 0, defined above
     pid_input = abs(leftMotor.encoder) - rightMotor.encoder;
@@ -185,9 +185,9 @@ void driveStraight() {
     if (pid_input > 0){
       // leftpwm = target_pwm; 
       // rightpwm = target_pwm + abs(pid_output);
-      forward(target_pwm, target_pwm + abs(pid_output));
+      forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
     } else {
-      forward(target_pwm + abs(pid_output), target_pwm);
+      forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
       // leftpwm = target_pwm + abs(pid_output);
       // rightpwm = target_pwm;
     }
@@ -248,6 +248,26 @@ void spinCW(uint8_t pwmL, uint8_t pwmR) {
   }
 }
 
+void driveToPole() {
+  pid_setpoint = 1.5;
+  Kp=1; Ki=0; Kd=0;
+  while(1){
+    pid_input = tofMatch; // 0,1,2 or 3
+    // 0 means pole is right of middle
+    // 1 or 2 mean that the pole is relatively in the middle
+    // 3 means that pole is left of middle
+
+    straightDrivePID.Compute();
+
+    if (pid_input == 0) { // too far right, speed up left wheel
+      forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
+    } else if (pid_input == 3) { // too far left, speed up right wheel
+      forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
+    }    
+
+    rtos::ThisThread::sleep_for(10ms);  
+  }
+}
 
 
 
