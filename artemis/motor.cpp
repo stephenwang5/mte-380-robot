@@ -2,12 +2,8 @@
 
 #include "main.h"
 
-inline float abs(float a) {
-  return a>0 ? a : -a;
-}
-
 inline bool closeTo(float a, float b) {
-  return abs(a-b) > 1e-1;
+  return abs(a-b) < 1e-1;
 }
 
 int target_turn_pwm = 19;

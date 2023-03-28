@@ -104,7 +104,7 @@ void loop() {
 
       magZBuf[bufIdx] = findHeading();
       // use the measurement in the past 1 second as the home orientation
-      homeMagZLocation = magZbuf[(bufIdx+9) % 10];
+      homeMagZLocation = magZBuf[(bufIdx+9) % 10];
 
       bufIdx++;
 
@@ -117,7 +117,7 @@ void loop() {
     sleep_for(3s);
 
     // optional: spin to correct
-    spinCW(40);
+    spinCW(40, 40);
     sleep_for(3s);
     throwbotState = IDLE;
     // findOrientation();

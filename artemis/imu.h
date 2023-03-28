@@ -23,7 +23,7 @@ constexpr float freeFallThreshold = 3;
 void initIMU();
 void readIMU();
 void imuReadLoop();
-void findHeading();
+float findHeading();
 void findOrientation();
 float imuMagnitude();
 void DetectLaunch();
