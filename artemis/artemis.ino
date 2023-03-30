@@ -4,8 +4,8 @@ using namespace rtos::ThisThread;
 
 //bridged pin 6 to pin 34 on board because pin 34 wouldnt output a PWM
 // Motor(pinA, pinB, pinEncoder);
-Motor leftMotor(D35, D6, D14);
-Motor rightMotor(D29, D11, D23);
+Motor leftMotor(D35, D6, D5);
+Motor rightMotor(D29, D11, D24);
 
 // TwoWire(pinSDA, pinSCL)
 TwoWire i2c(D25, D27);
@@ -15,12 +15,17 @@ SparkFun_VL53L5CX tof;
 VL53L5CX_ResultsData tofData;
 rtos::Mutex tofDataLock("tof data");
 MPU9250 imu(MPU9250_ADDRESS_AD0, i2c, I2C_FREQ);
-float homeMagZLocation = 0;
+rtos::Mutex imuLock("imu data");
+float homeHeading = 0;
+float homeMagX = 0;
+float homeMagY = 0;
 float imuMagnitudeNumber = 0;
+float magHeadingBuf[10] = {0}; // has to allocate this buffer outside if scope
 
 // define states and initialize the state variable
 
 rtos::Thread bleTask;
+rtos::Thread motorEncTask;
 rtos::Thread motorSpeedTask;
 rtos::Thread surveyTurnTask;
 rtos::Thread driveStraightTask;
@@ -66,61 +71,93 @@ void setup() {
 
   initToF();
   initIMU();
-  // initBLE();
+  initBLE();
 
   leftMotor.begin();
   rightMotor.begin();
+  coast();
   registerEncoderISRs();
 
   throwbotState = IDLE;
 
-  motorSpeedTask.start(calculateMotorSpeeds);
+  // motorEncTask.start(updateBothEncoders); // polling update
+  // motorSpeedTask.start(calculateMotorSpeeds);
   tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   debugPrinter.start(printDebugMsgs);
-  // bleTask.start(BLEComm);
-  //launchDetection.start(DetectLaunch);
+  bleTask.start(BLEComm);
 
   straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
   straightDrivePID.SetMode(AUTOMATIC);
+
+  // wait for initial measurements to come through
+  sleep_for(200ms);
+  Serial.println("all systems go");
 
 }
 
 void loop() {
   // state transition logic here
   // threads are statically allocated then started/stopped here
-  if (throwbotState == IDLE) {
 
-    // wait for initial measurements to come through
-    sleep_for(200ms);
+
+  if (throwbotState == IDLE) {
 
     // assuming that there is enough time for the buffer to fill up
     // and no 0s will be used as the home position
-    // float magZBuf[10] = {0};
     uint8_t bufIdx = 0;
 
-    imuMagnitudeNumber = imuMagnitude();
-    while (imuMagnitudeNumber > freeFallThreshold) {
+    do {
       imuMagnitudeNumber = imuMagnitude();
 
-      // magZBuf[bufIdx] = findHeading();
-      // use the measurement in the past 1 second as the home orientation
-      // homeMagZLocation = magZBuf[(bufIdx+9) % 10];
+      // magHeadingBuf[bufIdx] = findHeading();
+      // // use the measurement in the past 1 second as the home orientation
+      // homeHeading = magHeadingBuf[(bufIdx+9) % 10];
 
-      bufIdx++;
+      // bufIdx = (bufIdx+1) % 10;
 
       sleep_for(100ms);
-    }
+    } while (imuMagnitudeNumber > freeFallThreshold);
+
     throwbotState = READY;
+
+  } else if (throwbotState == TEST) {
+
+    // float angle[] = {0, 3.14/2, 3.14, 3*3.14/2-0.1, -3.14/2};
+    float angle[] = {
+      0,
+      90,
+      180,
+      260,
+      -45,
+    };
+    int idx = 0;
+    while (1) {
+      homeHeading = angle[idx];
+      turnInPlaceByMag(angle[idx], 18);
+      idx = (idx+1) % 5;
+      sleep_for(3s);
+    }
+    // sleep_for(1s);
 
   } else if (throwbotState == READY) {
 
     // in the air
     sleep_for(2s);
+
+    while (abs(imu.az) < 0.5) {
+      leftMotor.rotateCW(200);
+      rightMotor.rotateCCW(200);
+      sleep_for(500ms);
+      coast();
+      sleep_for(1s);
+    }
+
     findOrientation();
-    findOrientation();
-    findOrientation();
-    
+    while (orientation == UNKNOWN) {
+      findOrientation();
+      sleep_for(100ms);
+    }
 
     // optional: spin to correct
     // spinCW(40, 40);
@@ -129,19 +166,22 @@ void loop() {
     // coast();
     // throwbotState = IDLE;
     // Serial.println("exiting ready");
-    // findOrientation();
-    // turnInPlaceByMag((homeHeading + 3.14) % 1.57, 38);
+    // if (orientation == IMU_FACE_UP) {
+    //   turnInPlaceByMag(homeHeading, 38);
+    // } else {
+    //   turnInPlaceByMag(-homeHeading + 3.14, 38);
+    // }
     // // TODO: spin back to home position
-    // findOrientation();
     throwbotState = SURVEY;
 
   } else if (throwbotState == SURVEY) {
     int num_turns = 0, degrees = 30;
-    spinCW(30, 30);
+    // spinCW(30, 30);
+    rightMotor.rotateCW(20);
     while(tofMatch < 0 && num_turns < 2*360/degrees) {
       // surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
       //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
-      sleep_for(300ms);
+      sleep_for(100ms);
       //num_turns++;
     }
     coast();
@@ -157,31 +197,39 @@ void loop() {
     // spinCW(25);
     coast();
     uint8_t ctr = 0;
-    while (ctr >= 0 && ctr < 3) {
-      if (tofMatch < 0) {
-        ctr--;
-      } else {
+    for (uint8_t i = 0; i < 3; i++) {
+      if (tofMatch > -1) {
         ctr++;
       }
       sleep_for(150ms);
     }
-    throwbotState = (ctr==3) ? DRIVE : SURVEY;
-  } else if (throwbotState == DRIVE) {
-    driveStraightTask.start(driveStraight);
+    throwbotState = (ctr>2) ? DRIVE : SURVEY;
 
-    tofDataLock.lock();
-    if (tofData.distance_mm[2,4] < 100)
-    {
-       throwbotState = STOP;
-    }
-    tofDataLock.unlock();
-   
-  } else if (throwbotState == STOP) {
+  } else if (throwbotState == DRIVE) {
+    driveStraightTask.start(driveToPole);
+
+    int16_t distance;
+    do {
+      tofDataLock.lock();
+      distance = tofData.distance_mm[2*8 + 0];
+      for (uint8_t i = 1; i < 6; i++) {
+        distance = min(distance, tofData.distance_mm[3*8 + i]);
+      }
+      tofDataLock.unlock();
+      sleep_for(50ms);
+    } while (distance > 50);
+
     driveStraightTask.terminate();
     coast();
+    throwbotState = STOP;
+   
+  } else if (throwbotState == STOP) {
+    coast();
+    throwbotState = IDLE;
+    // while (1);
   }
  
-  delay(50);
+  sleep_for(50ms);
 }
 
 void printDebugMsgs() {
@@ -204,8 +252,13 @@ void printDebugMsgs() {
     // Serial.print(imu.my);
     // Serial.print(",");
     // Serial.print(imu.mz);
-    // Serial.print(",");
     // Serial.println();
+
+    // Serial.print(imu.yaw);
+    // Serial.print(",");
+    // Serial.print(imu.roll);
+    // Serial.print(",");
+    // Serial.print(imu.pitch);
 
     // Serial.print("tof 1: ");
     // Serial.println(tofData.distance_mm[1]);
@@ -255,13 +308,6 @@ void printDebugMsgs() {
     // Serial.print("PID output ");
     // Serial.println(pid_output);
 
-    // Serial.print("ax: ");
-    // Serial.print(imu.ax);
-    // Serial.print(" ay: ");
-   // Serial.print(imu.ay);
-    // Serial.print("az: ");
-    // Serial.println(imu.az);
-
     // Serial.println(orientation);
 
     // if (orientation == IMU_FACE_UP)
@@ -271,13 +317,20 @@ void printDebugMsgs() {
     //   Serial.println("Face DOWN");
     // }
 
-    Serial.print(throwbotState);
+    // Serial.print(throwbotState);
+    // Serial.print(",");
+    // Serial.print(homeHeading);
+    // Serial.print(",");
+    // Serial.print(avgHeading);
+    // printBuf<float>(magHeadingBuf, 10);
     // Serial.print(" magnitude: ");
-    // Serial.println(imuMagnitudeNumber);
+    // Serial.print(imuMagnitudeNumber);
 
-    printBuf<float>(tofDotProduct, 4);
-    Serial.println(tofMatch);
+    printBuf<int16_t>(tofData.distance_mm, 8, 8);
+    // printBuf<float>(tofDotProduct, 4);
+    // Serial.println(tofMatch);
   
+    Serial.println();
     rtos::ThisThread::sleep_for(100ms);
   }
 }

@@ -31,6 +31,7 @@ typedef enum {
   DRIVE,
   STOP,
   MOVE_TO_NEW_LOCATION,
+  TEST,
 } ThrowbotState;
 
 extern ThrowbotState throwbotState;
@@ -42,5 +43,8 @@ extern SparkFun_VL53L5CX tof;
 extern VL53L5CX_ResultsData tofData;
 extern rtos::Mutex tofDataLock;
 extern MPU9250 imu;
+extern rtos::Mutex imuLock;
+
+extern float homeHeading;
 
 #endif // MAIN_H

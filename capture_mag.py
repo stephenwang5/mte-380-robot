@@ -20,18 +20,22 @@ def read_mag(port: serial.Serial) -> np.ndarray:
 port = serial.Serial("/dev/cu.usbserial-AC00UOLH", baudrate=115200)
 port.readline()
 
-data = read_mag(port)
+# data = read_mag(port)
+data = ""
 ctr = 0
 
 while exit_event.is_set():
-  data = np.insert(data, data.shape[0], read_mag(port), axis=0)
+  # data = np.insert(data, data.shape[0], read_mag(port), axis=0)
+  data += port.readline().decode()
 
   if not ctr % 100:
     print(f"{ctr} samples captured")
   ctr += 1
 
-port.close()
+# np.save("magnetometer_data.npy", data)
+with open("mag_data1.txt", "w") as f:
+  f.write(data)
 
-np.save("magnetometer_data.npy", data)
+port.close()
 
 print("exiting")

@@ -1,16 +1,16 @@
+#include "ThisThread.h"
 #include "motor.h"
 
 #include "main.h"
 
 inline bool closeTo(float a, float b) {
-  return abs(a-b) < 1e-1;
+  return abs(a-b) < 3e-1;
 }
 
 int target_turn_pwm = 19;
 // Variables for general PID used to match encoder ticks from both motors
 double pid_setpoint = 0; double pid_output, pid_input;
 PID straightDrivePID(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
-uint8_t pwm_straight_drive = 35; //0-255
 // uint8_t leftpwm, rightpwm;
 
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
@@ -46,7 +46,9 @@ void Motor::activeBreak() {
 
 void Motor::encoderUpdate() {
   // CW increments and CCW decrements
-  encoder += direction;
+  bool val = digitalRead(encoderPin);
+  encoder += direction * (val ^ encMem);
+  encMem = val;
 }
 
 void Motor::calculateSpeed() { // uses rolling average filter
@@ -78,6 +80,12 @@ void Motor::calculateSpeed() { // uses rolling average filter
 
 }
 
+void updateBothEncoders() {
+  leftMotor.encoderUpdate();
+  rightMotor.encoderUpdate();
+  rtos::ThisThread::sleep_for(1ms);
+}
+
 static void updateRightEncoder() {
   rightMotor.encoderUpdate();
 }
@@ -87,15 +95,15 @@ static void updateLeftEncoder() {
 }
 
 void registerEncoderISRs() {
-  attachInterrupt(digitalPinToInterrupt(leftMotor.encoderPin), updateRightEncoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateLeftEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftMotor.encoderPin), updateLeftEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateRightEncoder, RISING);
 }
 
 void forward(uint8_t pwmL, uint8_t pwmR){
-  if (orientation == IMU_FACE_UP) { /// these might need to be swapped.
+  if (orientation == IMU_FACE_DOWN) { /// these might need to be swapped.
     leftMotor.rotateCCW(pwmL);
     rightMotor.rotateCW(pwmR);
-  } else {
+  } else if (orientation == IMU_FACE_UP) {
     leftMotor.rotateCW(pwmL);
     rightMotor.rotateCCW(pwmR);
   }
@@ -126,6 +134,32 @@ void calculateMotorSpeeds() {
     leftMotor.calculateSpeed();
     rightMotor.calculateSpeed();
     rtos::ThisThread::sleep_for(2ms);
+  }
+}
+
+double Kp=0, Ki=0, Kd=0;
+void driveToPole() {
+  pid_setpoint = 1.5;
+  Kp=10; Ki=0; Kd=0;
+
+  forward(pwm_straight_drive, pwm_straight_drive);
+  while(1){
+    pid_input = tofMatch; // 0,1,2 or 3
+    // 0 means pole is right of middle
+    // 1 or 2 mean that the pole is relatively in the middle
+    // 3 means that pole is left of middle
+
+    straightDrivePID.Compute();
+
+    if (pid_input == 3) { // too far right, speed up left wheel
+      forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
+    } else if (pid_input == 0) { // too far left, speed up right wheel
+      forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
+    } else {
+      forward(pwm_straight_drive, pwm_straight_drive);
+    }
+
+    rtos::ThisThread::sleep_for(10ms);  
   }
 }
 
@@ -203,14 +237,54 @@ void driveStraight() {
   }
 }
 
+constexpr int headingBufLen = 6;
+float headingBuf[headingBufLen] = {0};
+float avgHeading = 0;
+uint8_t headingBufIdx = 0;
+
+void filterHeading() {
+  float heading = findHeading();
+  uint8_t nextIdx = (headingBufIdx + 1) % headingBufLen;
+  avgHeading += heading / headingBufLen;
+  avgHeading -= headingBuf[nextIdx] / headingBufLen;
+
+  headingBuf[headingBufIdx] = heading;
+  headingBufIdx = nextIdx;
+}
+
 void turnInPlaceByMag(float targetMag, uint8_t pwm) {
-  // to ensure that the target is within the range of atan
-  targetMag = targetMag - (int)(targetMag / (3.14/2)) * 3.14/2;
 
-  spinCCW(30, 25);
+  constexpr float tolerance = 15; // degrees
 
-  while (!closeTo(atan(imu.my / imu.mx), targetMag)) {
-    rtos::ThisThread::sleep_for(5ms);
+  float heading = findHeading();
+  headingBufIdx = 0;
+  avgHeading = heading;
+  for (uint8_t i = 0; i < headingBufLen; i++) {
+    headingBuf[i] = heading;
+  }
+
+  while (1) {
+    rightMotor.rotateCCW(pwm);
+    filterHeading();
+
+    if (abs(avgHeading - targetMag) < tolerance) {
+
+      activeBreak();
+
+      int ctr = 0;
+      for (int i = 0; i < 5; i++) {
+        filterHeading();
+
+        if (abs(avgHeading - targetMag) < tolerance)
+          ctr++;
+
+        rtos::ThisThread::sleep_for(10ms);
+      }
+
+      if (ctr > 3)
+        break;
+    }
+    rtos::ThisThread::sleep_for(10ms);
   }
 
   coast();
