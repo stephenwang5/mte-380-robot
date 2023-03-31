@@ -1,13 +1,10 @@
+#include "ThisThread.h"
 #include "motor.h"
 
 #include "main.h"
 
-inline float abs(float a) {
-  return a>0 ? a : -a;
-}
-
 inline bool closeTo(float a, float b) {
-  return abs(a-b) > 1e-1;
+  return abs(a-b) < 3e-1;
 }
 
 int target_turn_pwm = 19;
@@ -15,8 +12,7 @@ int target_turn_pwm = 19;
 double pid_setpoint, pid_output, pid_input;
 double Kp, Ki, Kd;
 PID straightDrivePID(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
-uint8_t pwm_straight_drive = 35; //0-255
-// uint8_t leftpwm, rightpwm;
+uint8_t leftpwm, rightpwm;
 
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
 
@@ -51,7 +47,9 @@ void Motor::activeBreak() {
 
 void Motor::encoderUpdate() {
   // CW increments and CCW decrements
-  encoder += direction;
+  bool val = digitalRead(encoderPin);
+  encoder += direction * (val ^ encMem);
+  encMem = val;
 }
 
 void Motor::calculateSpeed() { // uses rolling average filter
@@ -83,6 +81,12 @@ void Motor::calculateSpeed() { // uses rolling average filter
 
 }
 
+void updateBothEncoders() {
+  leftMotor.encoderUpdate();
+  rightMotor.encoderUpdate();
+  rtos::ThisThread::sleep_for(1ms);
+}
+
 static void updateRightEncoder() {
   rightMotor.encoderUpdate();
 }
@@ -92,27 +96,17 @@ static void updateLeftEncoder() {
 }
 
 void registerEncoderISRs() {
-  attachInterrupt(digitalPinToInterrupt(leftMotor.encoderPin), updateRightEncoder, RISING);
-  attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateLeftEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(leftMotor.encoderPin), updateLeftEncoder, RISING);
+  attachInterrupt(digitalPinToInterrupt(rightMotor.encoderPin), updateRightEncoder, RISING);
 }
 
 void forward(uint8_t pwmL, uint8_t pwmR){
-  if (orientation == IMU_FACE_UP) { /// these might need to be swapped.
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+  if (orientation == IMU_FACE_DOWN) {
+    leftMotor.rotateCCW(pwmR * leftFactor);
+    rightMotor.rotateCW(pwmL * rightFactor);
   } else {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
-  }
-}
-
-void backward(uint8_t pwmL, uint8_t pwmR){
-  if (orientation == IMU_FACE_UP) {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
-  } else {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   }
 }
 
@@ -131,6 +125,40 @@ void calculateMotorSpeeds() {
     leftMotor.calculateSpeed();
     rightMotor.calculateSpeed();
     rtos::ThisThread::sleep_for(2ms);
+  }
+}
+
+double Kp=0, Ki=0, Kd=0;
+
+void driveToPole() {
+  pid_setpoint = 1.5;
+  Kp=6; Ki=0; Kd=0;
+
+  forward(pwm_straight_drive, pwm_straight_drive);
+  while(1){
+    int pid_output = (1.5 - tofMatch) * Kp;
+    // pid_input = tofMatch; // 0,1,2 or 3
+    // 0 means pole is right of middle
+    // 1 or 2 mean that the pole is relatively in the middle
+    // 3 means that pole is left of middle
+
+    // straightDrivePID.Compute();
+
+    if (tofMatch == 3) { // too far right, speed up left wheel
+      leftpwm = pwm_straight_drive + abs(pid_output);
+      rightpwm = pwm_straight_drive;
+      forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
+    } else if (tofMatch == 0) { // too far left, speed up right wheel
+      leftpwm = pwm_straight_drive;
+      rightpwm = pwm_straight_drive + abs(pid_output);
+      forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
+    } else {
+      leftpwm = pwm_straight_drive;
+      rightpwm = pwm_straight_drive;
+      forward(pwm_straight_drive, pwm_straight_drive);
+    }
+
+    rtos::ThisThread::sleep_for(10ms);  
   }
 }
 
@@ -176,8 +204,11 @@ void controlMotorSpeedsForTurning() {
 // }
 
 void driveStraight() {
+
+  uint8_t target_pwm = 35; 
   pid_setpoint = 0;
-  Kp=1; Ki=0.1; Kd=0;
+  leftMotor.encoder = 0;
+  rightMotor.encoder = 0;
   while(1) {
     //pid_setpoint is 0, defined above
     pid_input = abs(leftMotor.encoder) - rightMotor.encoder;
@@ -204,14 +235,54 @@ void driveStraight() {
   }
 }
 
+constexpr int headingBufLen = 6;
+float headingBuf[headingBufLen] = {0};
+float avgHeading = 0;
+uint8_t headingBufIdx = 0;
+
+void filterHeading() {
+  float heading = findHeading();
+  uint8_t nextIdx = (headingBufIdx + 1) % headingBufLen;
+  avgHeading += heading / headingBufLen;
+  avgHeading -= headingBuf[nextIdx] / headingBufLen;
+
+  headingBuf[headingBufIdx] = heading;
+  headingBufIdx = nextIdx;
+}
+
 void turnInPlaceByMag(float targetMag, uint8_t pwm) {
-  // to ensure that the target is within the range of atan
-  targetMag = targetMag - (int)(targetMag / (3.14/2)) * 3.14/2;
 
-  spinCCW(30, 25);
+  constexpr float tolerance = 15; // degrees
 
-  while (!closeTo(atan(imu.my / imu.mx), targetMag)) {
-    rtos::ThisThread::sleep_for(5ms);
+  float heading = findHeading();
+  headingBufIdx = 0;
+  avgHeading = heading;
+  for (uint8_t i = 0; i < headingBufLen; i++) {
+    headingBuf[i] = heading;
+  }
+
+  while (1) {
+    rightMotor.rotateCCW(pwm);
+    filterHeading();
+
+    if (abs(avgHeading - targetMag) < tolerance) {
+
+      activeBreak();
+
+      int ctr = 0;
+      for (int i = 0; i < 5; i++) {
+        filterHeading();
+
+        if (abs(avgHeading - targetMag) < tolerance)
+          ctr++;
+
+        rtos::ThisThread::sleep_for(10ms);
+      }
+
+      if (ctr > 3)
+        break;
+    }
+    rtos::ThisThread::sleep_for(10ms);
   }
 
   coast();
@@ -250,22 +321,26 @@ void TurnInPlaceByNumDegrees(float degrees){
 }
 
 void spinCCW(uint8_t pwmL, uint8_t pwmR) {
+  pwmL *= leftFactor;
+  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCW(pwmR * rightFactor);
   } else {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+    leftMotor.rotateCCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   }
 }
 
 void spinCW(uint8_t pwmL, uint8_t pwmR) {
+  pwmL *= leftFactor;
+  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+    leftMotor.rotateCCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   } else {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCW(pwmR * rightFactor);
   }
 }
 

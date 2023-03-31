@@ -11,6 +11,7 @@ extern int tofMatch;
 
 void initToF();
 void readToF();
+void getTof();
 int extractToF();
 
 #endif // TOF_H

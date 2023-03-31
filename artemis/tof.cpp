@@ -19,26 +19,37 @@ void initToF() {
   tof.setResolution(64);
 
   tof.setRangingMode(SF_VL53L5CX_RANGING_MODE::CONTINUOUS);
-  tof.setRangingFrequency(15);
+  // tof.setIntegrationTime(49);
+  tof.setRangingFrequency(5);
 
   tof.startRanging();
 }
 
 void readToF() {
   while (1) {
-    while (!tof.isDataReady()) {
-      rtos::ThisThread::sleep_for(10ms);
-    }
-    i2cLock.lock();
-    if (tof.getRangingData(&tofData)) {
-      extractToF();
-    } else {
-      Serial.println("yikes tof fetch failed");
-    }
-    i2cLock.unlock();
-
+    getTof();
     rtos::ThisThread::sleep_for(70ms);
   }
+}
+
+void getTof() {
+  bool ready = false;
+  do {
+    i2cLock.lock();
+    ready = tof.isDataReady();
+    i2cLock.unlock();
+    rtos::ThisThread::sleep_for(10ms);
+  } while (!ready);
+
+  i2cLock.lock();
+  tofDataLock.lock();
+  if (tof.getRangingData(&tofData)) {
+    extractToF();
+  } else {
+    Serial.println("yikes tof fetch failed");
+  }
+  tofDataLock.unlock();
+  i2cLock.unlock();
 }
 
 template<typename T>
@@ -79,11 +90,17 @@ void setZero(T* buf, uint8_t len) {
   }
 }
 
-void preprocess(int16_t* m, uint16_t* s, uint8_t len) {
-  const uint16_t sigmaThreshold = 10;
+void preprocess(int16_t* m, uint16_t* s, uint8_t* r, uint8_t len) {
+  // m==mean s==sigma r==reflectivity
+  const uint16_t sigmaThreshold = 30;
+
+  uint8_t bottomRow = orientation==IMU_FACE_UP ? 0 : 7;
   for (uint8_t i = 0; i < len; i++) {
-    m[i] = s[i] > sigmaThreshold ? 1000 : m[i];
-    m[i] = m[i] > 1000 ? 1000 : m[i];
+    // m[i] = s[i] > sigmaThreshold ? m[i] + s[i]*2 : m[i];
+    // m[i] = m[i] > 1500 ? 1500 : m[i];
+    if (i >= bottomRow*8 && i < (bottomRow+1)*8) {
+      m[i] = r[i] < 10 ? 200 : m[i];
+    }
   }
 }
 
@@ -103,12 +120,9 @@ int extractToF() {
     {1.629 , -0.8145, -2.4435 , -0.8145,  1.629, },
     // bottom left                        bottom right
   };
-  constexpr float threshold = -2;
+  constexpr float threshold = 0;
 
-  tofDataLock.lock();
-
-  // minBuf<int16_t>(tofData.distance_mm, tofNormalized, 1000, 64);
-  preprocess(tofData.distance_mm, tofData.range_sigma_mm, 64);
+  preprocess(tofData.distance_mm, tofData.range_sigma_mm, tofData.reflectance, 64);
   normalizeBuf<int16_t>(tofData.distance_mm, tofNormalized, 64);
 
   setZero<float>(tofDotProduct, strideLen);
@@ -127,9 +141,9 @@ int extractToF() {
     }
   }
 
-  int bestMatchIdx;
-  float bestMatch = max(tofDotProduct[0], tofDotProduct[1]);
-  for (int i = 2; i < 4; i++) {
+  int bestMatchIdx = 0;
+  float bestMatch = tofDotProduct[0];
+  for (int i = 1; i < 4; i++) {
     if (tofDotProduct[i] > bestMatch) {
       bestMatchIdx = i;
       bestMatch = tofDotProduct[i];
@@ -141,7 +155,9 @@ int extractToF() {
     tofMatch = -1;
   }
 
-  tofDataLock.unlock();
+  if (bufMax<int16_t>(tofData.distance_mm, 8) < 200) {
+    tofMatch = -1;
+  }
 
   return bestMatchIdx;
 }

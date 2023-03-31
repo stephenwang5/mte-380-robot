@@ -12,6 +12,7 @@ class Motor{
 public:
 
   int64_t encoder;
+  bool encMem;
   static constexpr uint8_t encBufLength = 4;
   int64_t encBuf[encBufLength];
   int64_t encBufTime[encBufLength];
@@ -47,9 +48,12 @@ public:
 extern double pid_setpoint, pid_output, pid_input;
 extern double Kp, Ki, Kd;
 extern PID straightDrivePID;
-extern uint8_t pwm_straight_drive; //0-255
+constexpr uint8_t pwm_straight_drive = 55; //0-255
+constexpr float leftFactor = 1.0;
+constexpr float rightFactor = 1.2;
 extern bool pole_located;
 extern bool survey_timeout;
+extern float avgHeading;
 
 extern uint8_t leftpwm, rightpwm;
 // int acc_error;
@@ -70,5 +74,6 @@ void controlMotorSpeedsForTurning();
 void TurnInPlaceByNumDegrees(float degrees);
 void driveStraight();
 void turnInPlaceByMag(float targetMag, uint8_t pwm);
+void driveToPole();
 
 #endif // MOTOR_H

@@ -22,7 +22,7 @@ def read_tof(port: serial.Serial) -> np.ndarray:
 
 port = serial.Serial("/dev/cu.usbserial-AC00UOLH", baudrate=115200)
 print(port.readline())
-print(port.readline())
+# print(port.readline())
 
 data = read_tof(port)
 ctr = 0
