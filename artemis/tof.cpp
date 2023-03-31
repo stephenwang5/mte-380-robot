@@ -90,6 +90,16 @@ void setZero(T* buf, uint8_t len) {
   }
 }
 
+int16_t avgDistance(uint8_t row) {
+  int16_t distance = 0;
+  tofDataLock.lock();
+  for (uint8_t i = 0; i < 8; i++) {
+    distance += tofData.distance_mm[row*8 + i] / 8;
+  }
+  tofDataLock.unlock();
+  return distance;
+}
+
 void preprocess(int16_t* m, uint16_t* s, uint8_t* r, uint8_t len) {
   // m==mean s==sigma r==reflectivity
   const uint16_t sigmaThreshold = 30;
@@ -156,6 +166,14 @@ int extractToF() {
   }
 
   if (bufMax<int16_t>(tofData.distance_mm, 8) < 200) {
+    tofMatch = -1;
+  }
+
+  // when the robot is underneath the ramp
+  uint8_t topRow = orientation==IMU_FACE_UP ? 5 : 1;
+  uint8_t bottomRow = orientation==IMU_FACE_UP ? 1 : 5;
+
+  if (avgDistance(topRow) < avgDistance(bottomRow)) {
     tofMatch = -1;
   }
 
