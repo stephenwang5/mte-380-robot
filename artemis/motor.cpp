@@ -101,11 +101,11 @@ void registerEncoderISRs() {
 
 void forward(uint8_t pwmL, uint8_t pwmR){
   if (orientation == IMU_FACE_DOWN) {
-    leftMotor.rotateCCW(pwmR);
-    rightMotor.rotateCW(pwmL);
+    leftMotor.rotateCCW(pwmR * leftFactor);
+    rightMotor.rotateCW(pwmL * rightFactor);
   } else {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   }
 }
 
@@ -321,22 +321,26 @@ void TurnInPlaceByNumDegrees(float degrees){
 }
 
 void spinCCW(uint8_t pwmL, uint8_t pwmR) {
+  pwmL *= leftFactor;
+  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCW(pwmR * rightFactor);
   } else {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+    leftMotor.rotateCCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   }
 }
 
 void spinCW(uint8_t pwmL, uint8_t pwmR) {
+  pwmL *= leftFactor;
+  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+    leftMotor.rotateCCW(pwmL * leftFactor);
+    rightMotor.rotateCCW(pwmR * rightFactor);
   } else {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL * leftFactor);
+    rightMotor.rotateCW(pwmR * rightFactor);
   }
 }
 

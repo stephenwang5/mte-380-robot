@@ -139,29 +139,10 @@ void loop() {
 
       // bufIdx = (bufIdx+1) % 10;
 
-      sleep_for(100ms);
+      sleep_for(10ms);
     } while (imuMagnitudeNumber > freeFallThreshold);
 
     throwbotState = READY;
-
-  } else if (throwbotState == TEST) {
-
-    // float angle[] = {0, 3.14/2, 3.14, 3*3.14/2-0.1, -3.14/2};
-    float angle[] = {
-      0,
-      90,
-      180,
-      260,
-      -45,
-    };
-    int idx = 0;
-    while (1) {
-      homeHeading = angle[idx];
-      turnInPlaceByMag(angle[idx], 22);
-      idx = (idx+1) % 5;
-      sleep_for(3s);
-    }
-    // sleep_for(1s);
 
   } else if (throwbotState == READY) {
 
@@ -182,19 +163,6 @@ void loop() {
       sleep_for(100ms);
     }
 
-    // optional: spin to correct
-    // spinCW(40, 40);
-    // sleep_for(1s);
-    // Serial.println("after sleeping");
-    // coast();
-    // throwbotState = IDLE;
-    // Serial.println("exiting ready");
-    // if (orientation == IMU_FACE_UP) {
-    //   turnInPlaceByMag(homeHeading, 38);
-    // } else {
-    //   turnInPlaceByMag(-homeHeading + 3.14, 38);
-    // }
-    // // TODO: spin back to home position
     throwbotState = SURVEY;
 
   } else if (throwbotState == SURVEY) {
@@ -413,7 +381,7 @@ void printDebugMsgs() {
     // Serial.println(tofMatch);
   
     Serial.println();
-    rtos::ThisThread::sleep_for(100ms);
+    rtos::ThisThread::sleep_for(500ms);
   }
 }
 
