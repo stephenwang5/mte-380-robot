@@ -21,6 +21,7 @@ float homeMagX = 0;
 float homeMagY = 0;
 float imuMagnitudeNumber = 0;
 float magHeadingBuf[10] = {0}; // has to allocate this buffer outside if scope
+uint8_t surveyCtr = 0;
 
 // define states and initialize the state variable
 
@@ -96,12 +97,24 @@ void setup() {
 
 }
 
+int16_t minDistance(uint8_t row) {
+  tofDataLock.lock();
+  int16_t distance = tofData.distance_mm[row*8 + 0];
+  for (uint8_t i = 1; i < 8; i++) {
+    distance = min(distance, tofData.distance_mm[row*8 + i]);
+  }
+  tofDataLock.unlock();
+  return distance;
+}
+
 void loop() {
   // state transition logic here
   // threads are statically allocated then started/stopped here
 
 
   if (throwbotState == IDLE) {
+
+    surveyCtr = 0;
 
     // assuming that there is enough time for the buffer to fill up
     // and no 0s will be used as the home position
@@ -134,7 +147,7 @@ void loop() {
     int idx = 0;
     while (1) {
       homeHeading = angle[idx];
-      turnInPlaceByMag(angle[idx], 18);
+      turnInPlaceByMag(angle[idx], 22);
       idx = (idx+1) % 5;
       sleep_for(3s);
     }
@@ -175,17 +188,31 @@ void loop() {
     throwbotState = SURVEY;
 
   } else if (throwbotState == SURVEY) {
-    int num_turns = 0, degrees = 30;
-    // spinCW(30, 30);
-    rightMotor.rotateCW(20);
-    while(tofMatch < 0 && num_turns < 2*360/degrees) {
+    surveyCtr++;
+    // int num_turns = 0, degrees = 30;
+    uint32_t time = millis();
+    // rightMotor.rotateCW(20);
+    spinCCW(20, 0);
+    // while(tofMatch < 0 && num_turns < 2*360/degrees) {
+    bool timeout = false;
+    bool match = false;
+    do {
+      timeout = millis() - time > 10000;
+      match = tofMatch > -1;
+      sleep_for(100ms);
+    } while (!match && !timeout && surveyCtr < 3);
       // surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
       //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
-      sleep_for(100ms);
       //num_turns++;
-    }
     coast();
-    throwbotState = CONFIRM;
+    throwbotState = (match) ? CONFIRM : WANDER;
+    if (surveyCtr > 2) {
+      throwbotState = WANDER;
+    } else if (match) {
+      throwbotState = CONFIRM;
+    } else {
+      throwbotState = WANDER;
+    }
     // surveyTurnTask.terminate();
     // if (tofMatch) {
     //   throwbotState = CONFIRM;
@@ -206,7 +233,9 @@ void loop() {
     throwbotState = (ctr>2) ? DRIVE : SURVEY;
 
   } else if (throwbotState == DRIVE) {
-    driveStraightTask.start(driveToPole);
+    osStatus status = driveStraightTask.start(driveToPole);
+    Serial.println(status);
+
 
     int16_t distance;
     do {
@@ -220,8 +249,41 @@ void loop() {
     } while (distance > 50);
 
     driveStraightTask.terminate();
+    driveStraightTask.join();
     coast();
     throwbotState = STOP;
+   
+  } else if (throwbotState == WANDER) {
+
+    surveyCtr = 0;
+
+    spinCW(15, 15);
+
+    int16_t distance;
+    uint8_t bottomRow = orientation==IMU_FACE_UP ? 0 : 7;
+    uint32_t time = millis();
+    uint16_t ctr = 0;
+
+    do {
+      distance = minDistance(bottomRow);
+      ctr++;
+      sleep_for(100ms);
+
+
+    } while (distance < 800 && millis()-time < 10000);
+
+    if (ctr > 1)
+      sleep_for(1s);
+
+    forward(50, 50);
+    time = millis();
+    do {
+      distance = minDistance(bottomRow);
+      sleep_for(100ms);
+    } while (distance > 300 && millis() - time < 2000);
+    coast();
+
+    throwbotState = SURVEY;
    
   } else if (throwbotState == STOP) {
     coast();
@@ -286,16 +348,19 @@ void printDebugMsgs() {
 
     // Serial.print("PID output ");
     // Serial.println(pid_output);
+    // Serial.print(", input ");
+    // Serial.print(pid_input);
     // Serial.print("left encoder count ");
     // Serial.print(leftMotor.encoder);
-    // Serial.print(", output pwm ");
+    // Serial.print(", left ");
     // Serial.print(leftpwm);
     // Serial.print(" , speed ");
     // Serial.println(leftMotor.speed);
     // Serial.print("rightMotor encoder count ");
     // Serial.print(rightMotor.encoder);
-    // Serial.print(", output pwm ");
+    // Serial.print(", right ");
     // Serial.print(rightpwm);
+    // Serial.println();
     // Serial.print(", speed ");
     // Serial.println(rightMotor.speed);
 
@@ -317,21 +382,29 @@ void printDebugMsgs() {
     //   Serial.println("Face DOWN");
     // }
 
-    // Serial.print(throwbotState);
-    // Serial.print(",");
+    Serial.print(throwbotState);
+    Serial.print(",");
     // Serial.print(homeHeading);
     // Serial.print(",");
     // Serial.print(avgHeading);
+    // Serial.print(findHeading());
     // printBuf<float>(magHeadingBuf, 10);
     // Serial.print(" magnitude: ");
     // Serial.print(imuMagnitudeNumber);
 
+    // tofDataLock.lock();
     printBuf<int16_t>(tofData.distance_mm, 8, 8);
+    Serial.println();
+    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
+    // Serial.println();
+    // printBuf<uint8_t>(tofData.reflectance, 8, 8);
+    // Serial.println();
+    // tofDataLock.unlock();
     // printBuf<float>(tofDotProduct, 4);
     // Serial.println(tofMatch);
   
     Serial.println();
-    rtos::ThisThread::sleep_for(100ms);
+    rtos::ThisThread::sleep_for(300ms);
   }
 }
 

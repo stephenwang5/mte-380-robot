@@ -29,6 +29,7 @@ typedef enum {
   SURVEY,
   CONFIRM,
   DRIVE,
+  WANDER,
   STOP,
   MOVE_TO_NEW_LOCATION,
   TEST,

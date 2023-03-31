@@ -6,7 +6,7 @@
 
 BLEService tofViz("180F");
 BLEService stateViz("9b7796b6-f098-4f51-84ce-a11f7219300c");
-BLEService headingViz("ab7796b6-f098-4f51-84ce-a11f7219300c");
+BLEService headingViz("aaaaaaaa-f098-4f51-84ce-a11f7219300c");
 
 // statically allocate all characteristics x_x
 BLEFloatCharacteristic tofCharacteristics[] = {
@@ -80,6 +80,7 @@ BLEIntCharacteristic bleIMUOrientation("0000", BLERead|BLENotify);
 BLEIntCharacteristic bleThrowbotState("0001", BLERead|BLENotify);
 BLEFloatCharacteristic bleHeadingGoal("0002", BLERead|BLENotify);
 BLEFloatCharacteristic bleHeadingAvg("0003", BLERead|BLENotify);
+BLEIntCharacteristic bleDotProd("0000", BLERead|BLENotify);
 
 void initBLE() {
   if (!BLE.begin()) {
@@ -98,6 +99,7 @@ void initBLE() {
   stateViz.addCharacteristic(bleThrowbotState);
   headingViz.addCharacteristic(bleHeadingGoal);
   headingViz.addCharacteristic(bleHeadingAvg);
+  headingViz.addCharacteristic(bleDotProd);
   BLE.addService(stateViz);
   BLE.addService(headingViz);
   BLE.advertise();
@@ -119,6 +121,7 @@ void BLEComm() {
         bleThrowbotState.writeValue(throwbotState);
         bleHeadingGoal.writeValue(homeHeading);
         bleHeadingAvg.writeValue(avgHeading);
+        bleDotProd.writeValue(tofMatch);
         rtos::ThisThread::sleep_for(100ms);
       }
 

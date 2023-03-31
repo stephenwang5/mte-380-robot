@@ -14,9 +14,12 @@ constexpr float magXScale = 1.23;
 constexpr float magYScale = 1.23;
 constexpr float magZScale = 1.19;
 
-constexpr float magXBias = -275;
-constexpr float magYBias = -23.5;
-constexpr float magZBias = 600;
+constexpr float magXBias = 270;
+constexpr float magYBias = -355;
+constexpr float magZBias = 635;
+// constexpr float magXBias = 0;
+// constexpr float magYBias = 0;
+// constexpr float magZBias = 0;
 
 constexpr float gyroXBias = -7.6;
 constexpr float gyroYBias = -3;

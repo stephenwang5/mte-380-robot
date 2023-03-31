@@ -11,7 +11,7 @@ int target_turn_pwm = 19;
 // Variables for general PID used to match encoder ticks from both motors
 double pid_setpoint = 0; double pid_output, pid_input;
 PID straightDrivePID(&pid_input, &pid_output, &pid_setpoint, Kp, Ki, Kd, DIRECT);
-// uint8_t leftpwm, rightpwm;
+uint8_t leftpwm, rightpwm;
 
 Motor::Motor(PinName a, PinName b, PinName enc): pinA(a), pinB(b), encoderPin(enc), pidController(&speed, &Output, &Setpoint, Kp, Ki, Kd, DIRECT) {}
 
@@ -138,24 +138,32 @@ void calculateMotorSpeeds() {
 }
 
 double Kp=0, Ki=0, Kd=0;
+
 void driveToPole() {
   pid_setpoint = 1.5;
-  Kp=10; Ki=0; Kd=0;
+  Kp=6; Ki=0; Kd=0;
 
   forward(pwm_straight_drive, pwm_straight_drive);
   while(1){
-    pid_input = tofMatch; // 0,1,2 or 3
+    int pid_output = (1.5 - tofMatch) * Kp;
+    // pid_input = tofMatch; // 0,1,2 or 3
     // 0 means pole is right of middle
     // 1 or 2 mean that the pole is relatively in the middle
     // 3 means that pole is left of middle
 
-    straightDrivePID.Compute();
+    // straightDrivePID.Compute();
 
-    if (pid_input == 3) { // too far right, speed up left wheel
+    if (tofMatch == 3) { // too far right, speed up left wheel
+      leftpwm = pwm_straight_drive + abs(pid_output);
+      rightpwm = pwm_straight_drive;
       forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
-    } else if (pid_input == 0) { // too far left, speed up right wheel
+    } else if (tofMatch == 0) { // too far left, speed up right wheel
+      leftpwm = pwm_straight_drive;
+      rightpwm = pwm_straight_drive + abs(pid_output);
       forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
     } else {
+      leftpwm = pwm_straight_drive;
+      rightpwm = pwm_straight_drive;
       forward(pwm_straight_drive, pwm_straight_drive);
     }
 

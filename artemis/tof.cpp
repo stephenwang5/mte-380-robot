@@ -79,11 +79,16 @@ void setZero(T* buf, uint8_t len) {
   }
 }
 
-void preprocess(int16_t* m, uint16_t* s, uint8_t len) {
+void preprocess(int16_t* m, uint16_t* s, uint8_t* r, uint8_t len) {
+  // m==mean s==sigma r==reflectivity
   const uint16_t sigmaThreshold = 10;
+  uint8_t bottomRow = orientation==IMU_FACE_UP ? 0 : 7;
   for (uint8_t i = 0; i < len; i++) {
     m[i] = s[i] > sigmaThreshold ? 1000 : m[i];
     m[i] = m[i] > 1000 ? 1000 : m[i];
+    if (i == bottomRow) {
+      m[i] = r[i] < 10 ? 200 : m[i];
+    }
   }
 }
 
@@ -108,7 +113,7 @@ int extractToF() {
   tofDataLock.lock();
 
   // minBuf<int16_t>(tofData.distance_mm, tofNormalized, 1000, 64);
-  preprocess(tofData.distance_mm, tofData.range_sigma_mm, 64);
+  preprocess(tofData.distance_mm, tofData.range_sigma_mm, tofData.reflectance, 64);
   normalizeBuf<int16_t>(tofData.distance_mm, tofNormalized, 64);
 
   setZero<float>(tofDotProduct, strideLen);
@@ -127,9 +132,9 @@ int extractToF() {
     }
   }
 
-  int bestMatchIdx;
-  float bestMatch = max(tofDotProduct[0], tofDotProduct[1]);
-  for (int i = 2; i < 4; i++) {
+  int bestMatchIdx = 0;
+  float bestMatch = tofDotProduct[0];
+  for (int i = 1; i < 4; i++) {
     if (tofDotProduct[i] > bestMatch) {
       bestMatchIdx = i;
       bestMatch = tofDotProduct[i];
@@ -138,6 +143,10 @@ int extractToF() {
   tofMatch = bestMatchIdx;
 
   if (bufMax<float>(tofDotProduct, 4) < threshold) {
+    tofMatch = -1;
+  }
+
+  if (bufMax<int16_t>(tofData.distance_mm, 8) < 200) {
     tofMatch = -1;
   }
 

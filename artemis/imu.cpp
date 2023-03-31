@@ -48,29 +48,29 @@ void readIMU() {
   imu.my = (float)imu.magCount[1] * imu.mRes * magYScale + magYBias;
   imu.mz = (float)imu.magCount[2] * imu.mRes * magZScale + magZBias;
 
-  imu.updateTime();
-  MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD,
-                      imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my,
-                      imu.mx, imu.mz, imu.deltat);
+  // imu.updateTime();
+  // MadgwickQuaternionUpdate(imu.ax, imu.ay, imu.az, imu.gx * DEG_TO_RAD,
+  //                     imu.gy * DEG_TO_RAD, imu.gz * DEG_TO_RAD, imu.my,
+  //                     imu.mx, imu.mz, imu.deltat);
 
-  imu.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
-                * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
-                * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
-                * *(getQ()+3));
-  imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
-                * *(getQ()+2)));
-  imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
-                * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
-                * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
-                * *(getQ()+3));
-  imu.pitch *= RAD_TO_DEG;
-  imu.roll *= RAD_TO_DEG;
-  imu.yaw   *= RAD_TO_DEG;
+  // imu.yaw   = atan2(2.0f * (*(getQ()+1) * *(getQ()+2) + *getQ()
+  //               * *(getQ()+3)), *getQ() * *getQ() + *(getQ()+1)
+  //               * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) - *(getQ()+3)
+  //               * *(getQ()+3));
+  // imu.pitch = -asin(2.0f * (*(getQ()+1) * *(getQ()+3) - *getQ()
+  //               * *(getQ()+2)));
+  // imu.roll  = atan2(2.0f * (*getQ() * *(getQ()+1) + *(getQ()+2)
+  //               * *(getQ()+3)), *getQ() * *getQ() - *(getQ()+1)
+  //               * *(getQ()+1) - *(getQ()+2) * *(getQ()+2) + *(getQ()+3)
+  //               * *(getQ()+3));
+  // imu.pitch *= RAD_TO_DEG;
+  // imu.roll *= RAD_TO_DEG;
+  // imu.yaw   *= RAD_TO_DEG;
 
-  // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
-  // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
-  // - http://www.ngdc.noaa.gov/geomag-web/#declination
-  imu.yaw  -= 8.5;
+  // // Declination of SparkFun Electronics (40°05'26.6"N 105°11'05.9"W) is
+  // // 	8° 30' E  ± 0° 21' (or 8.5°) on 2016-07-19
+  // // - http://www.ngdc.noaa.gov/geomag-web/#declination
+  // imu.yaw  -= 8.5;
   imuLock.unlock();
 }
 

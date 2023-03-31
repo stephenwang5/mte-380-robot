@@ -4,6 +4,9 @@ import numpy as np
 import signal
 from threading import Event
 from time import sleep
+import sys
+
+print(sys.argv[1])
 
 exit_event = Event()
 exit_event.set()
@@ -33,7 +36,7 @@ while exit_event.is_set():
   ctr += 1
 
 # np.save("magnetometer_data.npy", data)
-with open("mag_data1.txt", "w") as f:
+with open(sys.argv[1], "w") as f:
   f.write(data)
 
 port.close()
