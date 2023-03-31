@@ -92,7 +92,9 @@ void setup() {
   straightDrivePID.SetMode(AUTOMATIC);
 
   // wait for initial measurements to come through
+  forward(50, 50);
   sleep_for(200ms);
+  coast();
   // Serial.println("all systems go");
 
 }
@@ -194,7 +196,7 @@ void loop() {
       distance = minDistance(3);
 
       tofDataLock.lock();
-      int pid_output = (1.5 - tofMatch) * 10;
+      pid_output = (1.5 - tofMatch) * 10;
       if (tofMatch == 3) { // too far right, speed up left wheel
         forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
       } else if (tofMatch == 0) { // too far left, speed up right wheel
@@ -350,15 +352,15 @@ void printDebugMsgs() {
 
     tofDataLock.lock();
     // printBufBytes<int16_t>(tofData.distance_mm, 64);
-    printBuf<int16_t>(tofData.distance_mm, 8, 8);
-    Serial.println();
-    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
-    Serial.println();
+    // printBuf<int16_t>(tofData.distance_mm, 8, 8);
+    // Serial.println();
+    // printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
+    // Serial.println();
     // printBuf<uint8_t>(tofData.reflectance, 8, 8);
     // Serial.println();
     printBuf<float>(tofDotProduct, 4);
+    Serial.println(tofMatch);
     tofDataLock.unlock();
-    // Serial.println(tofMatch);
   
     Serial.println();
     rtos::ThisThread::sleep_for(500ms);

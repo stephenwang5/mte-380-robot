@@ -50,7 +50,7 @@ extern double Kp, Ki, Kd;
 extern PID straightDrivePID;
 constexpr uint8_t pwm_straight_drive = 55; //0-255
 constexpr float leftFactor = 1.0;
-constexpr float rightFactor = 1.2;
+constexpr float rightFactor = 1.1;
 extern bool pole_located;
 extern bool survey_timeout;
 extern float avgHeading;

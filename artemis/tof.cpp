@@ -97,6 +97,7 @@ void preprocess(int16_t* m, uint16_t* s, uint8_t* r, uint8_t len) {
   uint8_t bottomRow = orientation==IMU_FACE_UP ? 0 : 7;
   for (uint8_t i = 0; i < len; i++) {
     // m[i] = s[i] > sigmaThreshold ? m[i] + s[i]*2 : m[i];
+    // m[i] = s[i] > sigmaThreshold && m[i] < 700 ? 2000 : m[i];
     // m[i] = m[i] > 1500 ? 1500 : m[i];
     if (i >= bottomRow*8 && i < (bottomRow+1)*8) {
       m[i] = r[i] < 10 ? 200 : m[i];
@@ -180,12 +181,12 @@ int extractToF() {
   }
 
   // when the robot is underneath the ramp
-  uint8_t topRow = orientation==IMU_FACE_UP ? 6 : 1;
-  uint8_t bottomRow = orientation==IMU_FACE_UP ? 1 : 6;
+  // uint8_t topRow = orientation==IMU_FACE_UP ? 6 : 1;
+  // uint8_t bottomRow = orientation==IMU_FACE_UP ? 1 : 6;
 
-  if (avgDistance(topRow) < avgDistance(bottomRow)) {
-    tofMatch = -1;
-  }
+  // if (avgDistance(topRow) < avgDistance(bottomRow)) {
+  //   tofMatch = -1;
+  // }
 
   return bestMatchIdx;
 }
