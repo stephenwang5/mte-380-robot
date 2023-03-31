@@ -199,48 +199,43 @@ void loop() {
 
   } else if (throwbotState == SURVEY) {
     surveyCtr++;
-    // int num_turns = 0, degrees = 30;
+
     uint32_t time = millis();
-    // rightMotor.rotateCW(20);
-    spinCCW(20, 0);
-    // while(tofMatch < 0 && num_turns < 2*360/degrees) {
-    bool timeout = false;
-    bool match = false;
-    do {
-      timeout = millis() - time > 10000;
-      match = tofMatch > -1;
-      sleep_for(100ms);
-    } while (!match && !timeout && surveyCtr < 3);
-      // surveyTurnTask.start(controlMotorSpeedsForTurning); // will just turn robot slowly without stopping
-      //TurnInPlaceByNumDegrees(degrees); // resulting in ~ 45 degrees of rotation in real life, therefore keep the number of degrees at 30 or less.
-      //num_turns++;
+    uint8_t ctr = 0;
+
+    sleep_for(400ms); // first measurement
+    while (ctr < 15 && tofMatch < 0){
+      spinCCW(30,30);
+      sleep_for(180ms);
+      coast();
+
+      sleep_for(400ms);
+
+      ctr++;
+    }
+
     coast();
-    throwbotState = (match) ? CONFIRM : WANDER;
+
     if (surveyCtr > 2) {
       throwbotState = WANDER;
-    } else if (match) {
+    } else if (tofMatch > -1) {
       throwbotState = CONFIRM;
     } else {
       throwbotState = WANDER;
     }
-    // surveyTurnTask.terminate();
-    // if (tofMatch) {
-    //   throwbotState = CONFIRM;
-    // } else if (num_turns > 2*360/degrees) { // robot has not been able to locate the pole for the past two full rotation. The robot needs to move
-    //   throwbotState = MOVE_TO_NEW_LOCATION;
-    // }
+
   } else if (throwbotState == CONFIRM) {
     // double back because the robot overshoots the target
     // spinCW(25);
     coast();
     uint8_t ctr = 0;
-    for (uint8_t i = 0; i < 5; i++) {
+    for (uint8_t i = 0; i < 3; i++) {
       if (tofMatch > -1) {
         ctr++;
       }
-      sleep_for(150ms);
+      sleep_for(200ms);
     }
-    throwbotState = (ctr>3) ? DRIVE : SURVEY;
+    throwbotState = (ctr>2) ? DRIVE : SURVEY;
 
   } else if (throwbotState == DRIVE) {
 
@@ -408,9 +403,9 @@ void printDebugMsgs() {
     tofDataLock.lock();
     // printBufBytes<int16_t>(tofData.distance_mm, 64);
     printBuf<int16_t>(tofData.distance_mm, 8, 8);
-    // Serial.println();
-    // printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
-    // Serial.println();
+    Serial.println();
+    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
+    Serial.println();
     // printBuf<uint8_t>(tofData.reflectance, 8, 8);
     // Serial.println();
     printBuf<float>(tofDotProduct, 4);
@@ -418,7 +413,7 @@ void printDebugMsgs() {
     // Serial.println(tofMatch);
   
     Serial.println();
-    rtos::ThisThread::sleep_for(300ms);
+    rtos::ThisThread::sleep_for(100ms);
   }
 }
 
