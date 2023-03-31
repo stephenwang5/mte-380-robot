@@ -104,6 +104,26 @@ void preprocess(int16_t* m, uint16_t* s, uint8_t* r, uint8_t len) {
   }
 }
 
+int16_t minDistance(uint8_t row) {
+  tofDataLock.lock();
+  int16_t distance = tofData.distance_mm[row*8 + 0];
+  for (uint8_t i = 1; i < 8; i++) {
+    distance = min(distance, tofData.distance_mm[row*8 + i]);
+  }
+  tofDataLock.unlock();
+  return distance;
+}
+
+int16_t avgDistance(uint8_t row) {
+  int16_t distance = 0;
+  tofDataLock.lock();
+  for (uint8_t i = 0; i < 8; i++) {
+    distance += tofData.distance_mm[row*8 + i] / 8;
+  }
+  tofDataLock.unlock();
+  return distance;
+}
+
 int extractToF() {
   // remember that when the imu faces up,
   // 0th measurement is the bottom right, the measurements then go left and up
@@ -156,6 +176,14 @@ int extractToF() {
   }
 
   if (bufMax<int16_t>(tofData.distance_mm, 8) < 200) {
+    tofMatch = -1;
+  }
+
+  // when the robot is underneath the ramp
+  uint8_t topRow = orientation==IMU_FACE_UP ? 6 : 1;
+  uint8_t bottomRow = orientation==IMU_FACE_UP ? 1 : 6;
+
+  if (avgDistance(topRow) < avgDistance(bottomRow)) {
     tofMatch = -1;
   }
 

@@ -97,26 +97,6 @@ void setup() {
 
 }
 
-int16_t minDistance(uint8_t row) {
-  tofDataLock.lock();
-  int16_t distance = tofData.distance_mm[row*8 + 0];
-  for (uint8_t i = 1; i < 8; i++) {
-    distance = min(distance, tofData.distance_mm[row*8 + i]);
-  }
-  tofDataLock.unlock();
-  return distance;
-}
-
-int16_t avgDistance(uint8_t row) {
-  int16_t distance = 0;
-  tofDataLock.lock();
-  for (uint8_t i = 0; i < 8; i++) {
-    distance += tofData.distance_mm[row*8 + i] / 8;
-  }
-  tofDataLock.unlock();
-  return distance;
-}
-
 void loop() {
   // state transition logic here
   // threads are statically allocated then started/stopped here

@@ -13,5 +13,7 @@ void initToF();
 void readToF();
 void getTof();
 int extractToF();
+int16_t minDistance(uint8_t row);
+int16_t avgDistance(uint8_t row);
 
 #endif // TOF_H
