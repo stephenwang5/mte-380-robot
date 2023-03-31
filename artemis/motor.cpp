@@ -321,8 +321,6 @@ void TurnInPlaceByNumDegrees(float degrees){
 }
 
 void spinCCW(uint8_t pwmL, uint8_t pwmR) {
-  pwmL *= leftFactor;
-  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
     leftMotor.rotateCW(pwmL * leftFactor);
     rightMotor.rotateCW(pwmR * rightFactor);
@@ -333,8 +331,6 @@ void spinCCW(uint8_t pwmL, uint8_t pwmR) {
 }
 
 void spinCW(uint8_t pwmL, uint8_t pwmR) {
-  pwmL *= leftFactor;
-  pwmR *= rightFactor;
   if (orientation == IMU_FACE_DOWN) {
     leftMotor.rotateCCW(pwmL * leftFactor);
     rightMotor.rotateCCW(pwmR * rightFactor);
