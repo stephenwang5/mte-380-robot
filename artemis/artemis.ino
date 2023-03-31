@@ -72,7 +72,7 @@ void setup() {
 
   initToF();
   initIMU();
-  initBLE();
+  // initBLE();
 
   leftMotor.begin();
   rightMotor.begin();
@@ -86,14 +86,14 @@ void setup() {
   tofInputTask.start(readToF);
   imuInputTask.start(imuReadLoop);
   debugPrinter.start(printDebugMsgs);
-  bleTask.start(BLEComm);
+  // bleTask.start(BLEComm);
 
   straightDrivePID.SetOutputLimits(-255 + pwm_straight_drive, 255 - pwm_straight_drive);
   straightDrivePID.SetMode(AUTOMATIC);
 
   // wait for initial measurements to come through
   sleep_for(200ms);
-  Serial.println("all systems go");
+  // Serial.println("all systems go");
 
 }
 
@@ -102,6 +102,16 @@ int16_t minDistance(uint8_t row) {
   int16_t distance = tofData.distance_mm[row*8 + 0];
   for (uint8_t i = 1; i < 8; i++) {
     distance = min(distance, tofData.distance_mm[row*8 + i]);
+  }
+  tofDataLock.unlock();
+  return distance;
+}
+
+int16_t avgDistance(uint8_t row) {
+  int16_t distance = 0;
+  tofDataLock.lock();
+  for (uint8_t i = 0; i < 8; i++) {
+    distance += tofData.distance_mm[row*8 + i] / 8;
   }
   tofDataLock.unlock();
   return distance;
@@ -224,32 +234,36 @@ void loop() {
     // spinCW(25);
     coast();
     uint8_t ctr = 0;
-    for (uint8_t i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < 5; i++) {
       if (tofMatch > -1) {
         ctr++;
       }
       sleep_for(150ms);
     }
-    throwbotState = (ctr>2) ? DRIVE : SURVEY;
+    throwbotState = (ctr>3) ? DRIVE : SURVEY;
 
   } else if (throwbotState == DRIVE) {
-    osStatus status = driveStraightTask.start(driveToPole);
-    Serial.println(status);
 
+    forward(pwm_straight_drive, pwm_straight_drive);
 
     int16_t distance;
     do {
+      distance = minDistance(3);
+
       tofDataLock.lock();
-      distance = tofData.distance_mm[2*8 + 0];
-      for (uint8_t i = 1; i < 6; i++) {
-        distance = min(distance, tofData.distance_mm[3*8 + i]);
+      int pid_output = (1.5 - tofMatch) * 10;
+      if (tofMatch == 3) { // too far right, speed up left wheel
+        forward(pwm_straight_drive + abs(pid_output), pwm_straight_drive);
+      } else if (tofMatch == 0) { // too far left, speed up right wheel
+        forward(pwm_straight_drive, pwm_straight_drive + abs(pid_output));
+      } else {
+        forward(pwm_straight_drive, pwm_straight_drive);
       }
       tofDataLock.unlock();
+
       sleep_for(50ms);
     } while (distance > 50);
 
-    driveStraightTask.terminate();
-    driveStraightTask.join();
     coast();
     throwbotState = STOP;
    
@@ -257,7 +271,7 @@ void loop() {
 
     surveyCtr = 0;
 
-    spinCW(15, 15);
+    spinCW(20, 20);
 
     int16_t distance;
     uint8_t bottomRow = orientation==IMU_FACE_UP ? 0 : 7;
@@ -265,22 +279,21 @@ void loop() {
     uint16_t ctr = 0;
 
     do {
-      distance = minDistance(bottomRow);
+      distance = avgDistance(bottomRow);
       ctr++;
       sleep_for(100ms);
 
-
-    } while (distance < 800 && millis()-time < 10000);
+    } while (distance < 900 && millis()-time < 10000);
 
     if (ctr > 1)
-      sleep_for(1s);
+      sleep_for(500ms);
 
     forward(50, 50);
     time = millis();
     do {
-      distance = minDistance(bottomRow);
+      distance = avgDistance(bottomRow);
       sleep_for(100ms);
-    } while (distance > 300 && millis() - time < 2000);
+    } while (distance > 700 && millis() - time < 2000);
     coast();
 
     throwbotState = SURVEY;
@@ -382,8 +395,8 @@ void printDebugMsgs() {
     //   Serial.println("Face DOWN");
     // }
 
-    Serial.print(throwbotState);
-    Serial.print(",");
+    // Serial.print(throwbotState);
+    // Serial.print(",");
     // Serial.print(homeHeading);
     // Serial.print(",");
     // Serial.print(avgHeading);
@@ -392,15 +405,16 @@ void printDebugMsgs() {
     // Serial.print(" magnitude: ");
     // Serial.print(imuMagnitudeNumber);
 
-    // tofDataLock.lock();
+    tofDataLock.lock();
+    // printBufBytes<int16_t>(tofData.distance_mm, 64);
     printBuf<int16_t>(tofData.distance_mm, 8, 8);
-    Serial.println();
-    printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
+    // Serial.println();
+    // printBuf<uint16_t>(tofData.range_sigma_mm, 8, 8);
     // Serial.println();
     // printBuf<uint8_t>(tofData.reflectance, 8, 8);
     // Serial.println();
-    // tofDataLock.unlock();
-    // printBuf<float>(tofDotProduct, 4);
+    printBuf<float>(tofDotProduct, 4);
+    tofDataLock.unlock();
     // Serial.println(tofMatch);
   
     Serial.println();

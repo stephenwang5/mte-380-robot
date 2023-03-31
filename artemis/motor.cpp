@@ -100,22 +100,12 @@ void registerEncoderISRs() {
 }
 
 void forward(uint8_t pwmL, uint8_t pwmR){
-  if (orientation == IMU_FACE_DOWN) { /// these might need to be swapped.
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCW(pwmR);
-  } else if (orientation == IMU_FACE_UP) {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
-  }
-}
-
-void backward(uint8_t pwmL, uint8_t pwmR){
-  if (orientation == IMU_FACE_UP) {
-    leftMotor.rotateCW(pwmL);
-    rightMotor.rotateCCW(pwmR);
+  if (orientation == IMU_FACE_DOWN) {
+    leftMotor.rotateCCW(pwmR);
+    rightMotor.rotateCW(pwmL);
   } else {
-    leftMotor.rotateCCW(pwmL);
-    rightMotor.rotateCW(pwmR);
+    leftMotor.rotateCW(pwmL);
+    rightMotor.rotateCCW(pwmR);
   }
 }
 
